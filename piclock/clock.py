@@ -18,6 +18,7 @@ class ClockRenderer:
         self.font_seconds = None
         self.font_ampm = None
         self.font_date = None
+        self.font_holiday = None
         self.font_msg = None
         self.font_help = None
         self._init_fonts()
@@ -28,11 +29,12 @@ class ClockRenderer:
             pygame.font.init()
         base_h = self.height
         # Proportional font sizes based on screen height
-        time_size = int(base_h * 0.26 * self.font_scale)
-        sec_size = int(time_size * 0.52)
-        ampm_size = int(time_size * 0.38)
-        date_size = int(base_h * 0.065 * self.font_scale)
-        msg_size = int(base_h * 0.045 * self.font_scale)
+        time_size = int(base_h * 0.25 * self.font_scale)
+        sec_size = int(time_size * 0.50)
+        ampm_size = int(time_size * 0.36)
+        date_size = int(base_h * 0.058 * self.font_scale)
+        holiday_size = int(base_h * 0.048 * self.font_scale)
+        msg_size = int(base_h * 0.040 * self.font_scale)
         help_size = int(base_h * 0.038)
 
         # Monospace or clean Sans fonts
@@ -41,6 +43,7 @@ class ClockRenderer:
         self.font_seconds = pygame.font.SysFont(font_names, max(12, sec_size), bold=True)
         self.font_ampm = pygame.font.SysFont(font_names, max(10, ampm_size), bold=True)
         self.font_date = pygame.font.SysFont(font_names, max(12, date_size), bold=False)
+        self.font_holiday = pygame.font.SysFont(font_names, max(11, holiday_size), bold=True)
         self.font_msg = pygame.font.SysFont(font_names, max(10, msg_size), italic=True)
         self.font_help = pygame.font.SysFont(font_names, max(10, help_size))
 
@@ -81,8 +84,8 @@ class ClockRenderer:
         surface.blit(text_surf, rect)
         return rect
 
-    def render(self, surface: pygame.Surface, config: dict, show_help: bool = False, help_opacity: float = 0.0):
-        """Render the complete clock, date, custom message, and overlays."""
+    def render(self, surface: pygame.Surface, config: dict, holiday_text: str = "", is_today_holiday: bool = False, show_help: bool = False, help_opacity: float = 0.0):
+        """Render the complete clock, date, holiday banner, custom message, and overlays."""
         now = datetime.datetime.now()
 
         format_24h = config.get("clock", {}).get("format_24h", False)
@@ -118,9 +121,26 @@ class ClockRenderer:
         msg_color = self.theme.get("message_color", (160, 160, 200))
         accent_color = self.theme.get("accent", (255, 0, 128))
 
-        # Center coordinates
+        # Center coordinates & proportional vertical distribution
         center_x = self.width // 2
-        time_y = int(self.height * 0.40)
+        has_holiday = bool(holiday_text)
+        has_msg = bool(show_message and custom_message)
+
+        if has_holiday and has_msg:
+            time_y = int(self.height * 0.36)
+            date_y = int(self.height * 0.54)
+            holiday_y = int(self.height * 0.68)
+            msg_y = int(self.height * 0.82)
+        elif has_holiday:
+            time_y = int(self.height * 0.38)
+            date_y = int(self.height * 0.57)
+            holiday_y = int(self.height * 0.72)
+            msg_y = int(self.height * 0.85)
+        else:
+            time_y = int(self.height * 0.40)
+            date_y = int(self.height * 0.60)
+            holiday_y = int(self.height * 0.72)
+            msg_y = int(self.height * 0.78)
 
         # Render Time digits with exact spacing
         time_text = f"{hours_str}{colon}{mins_str}"
@@ -160,18 +180,33 @@ class ClockRenderer:
         except Exception:
             date_text = now.strftime("%A, %B %d, %Y")
 
-        date_y = int(self.height * 0.60)
         self._render_glow_text(surface, date_text, self.font_date, date_color, (center_x, date_y), glow=glow_enabled, anchor="center")
 
-        # 3. Custom message / Status banner
+        # 3. Holiday Banner
+        if has_holiday:
+            if is_today_holiday:
+                # Festive glowing badge
+                h_surf = self.font_holiday.render(holiday_text, True, (255, 230, 80))
+                hw, hh = h_surf.get_size()
+                badge_pad_x, badge_pad_y = 18, 6
+                badge_surf = pygame.Surface((hw + badge_pad_x * 2, hh + badge_pad_y * 2), pygame.SRCALPHA)
+                pygame.draw.rect(badge_surf, (255, 200, 0, 45), badge_surf.get_rect(), border_radius=12)
+                pygame.draw.rect(badge_surf, (255, 215, 0, 160), badge_surf.get_rect(), width=1, border_radius=12)
+                surface.blit(badge_surf, (center_x - (badge_surf.get_width() // 2), holiday_y - (badge_surf.get_height() // 2)))
+                self._render_glow_text(surface, holiday_text, self.font_holiday, (255, 230, 80), (center_x, holiday_y), glow=glow_enabled, anchor="center")
+            else:
+                # Upcoming holiday indicator
+                h_color = self.theme.get("accent", (0, 240, 255))
+                self._render_glow_text(surface, holiday_text, self.font_holiday, h_color, (center_x, holiday_y), glow=False, anchor="center")
+
+        # 4. Custom message / Status banner
         if show_message and custom_message:
-            msg_y = int(self.height * 0.78)
             self._render_glow_text(surface, custom_message, self.font_msg, msg_color, (center_x, msg_y), glow=False, anchor="center")
 
         # 4. On-screen Help Overlay (when active)
         if show_help or help_opacity > 0.05:
             help_lines = [
-                "SHORTCUTS:  [M] Mode  |  [C] Theme  |  [T] 12/24h  |  [S] Seconds  |  [F] Fullscreen  |  [H] Toggle Help  |  [Q/ESC] Quit",
+                "SHORTCUTS:  [M] Mode  |  [C] Theme  |  [L] Country  |  [G] Wallpaper  |  [T] 12/24h  |  [S] Seconds  |  [B] Dimmer  |  [F] Fullscreen  |  [H] Help  |  [Q] Quit",
                 "Web Remote: http://<raspberry-pi-ip>:8080"
             ]
             overlay_h = int(len(help_lines) * 28 + 14)

@@ -6,6 +6,7 @@ Combines animations, clock rendering, keyboard/touch inputs, and Web Remote.
 import os
 import sys
 import time
+import datetime
 import signal
 import pygame
 
@@ -14,6 +15,10 @@ from .themes import get_theme, get_next_theme
 from .animations import create_animation, get_next_animation
 from .clock import ClockRenderer
 from .web_remote import start_web_remote
+from .holidays import HolidayManager
+from .background import BackgroundManager, BACKGROUND_PRESETS
+
+COUNTRY_LIST = ["IN", "US", "UK", "CA", "AU", "GLOBAL", "ALL"]
 
 class PiClockApp:
     def __init__(self, config_file: str = "config.json"):
@@ -51,6 +56,22 @@ class PiClockApp:
         # Clock renderer
         font_scale = float(self.config.get("visual", {}).get("font_scale", 1.0))
         self.clock_renderer = ClockRenderer(self.width, self.height, self.current_theme, font_scale)
+
+        # Holiday manager (100% offline, multi-country)
+        hol_cfg = self.config.get("holiday", {})
+        self.holiday_manager = HolidayManager(
+            country=hol_cfg.get("country", "IN"),
+            custom_holidays=hol_cfg.get("custom_holidays", [])
+        )
+
+        # Background media manager (online images, local wallpapers, presets)
+        self.bg_manager = BackgroundManager(self.width, self.height)
+        bg_cfg = self.config.get("background", {})
+        self.bg_manager.set_background(
+            enabled=bg_cfg.get("enabled", False),
+            source=bg_cfg.get("source", "cyber_city"),
+            dimming=bg_cfg.get("dimming", 55)
+        )
 
         # UI state
         self.show_help = False
@@ -123,12 +144,31 @@ class PiClockApp:
         speed = float(self.config.get("visual", {}).get("animation_speed", 1.0))
         self.animation.set_speed(speed)
 
+        # Update holiday configuration
+        hol_cfg = self.config.get("holiday", {})
+        self.holiday_manager.set_country(hol_cfg.get("country", "IN"))
+        self.holiday_manager.set_custom_holidays(hol_cfg.get("custom_holidays", []))
+
+        # Update background configuration
+        bg_cfg = self.config.get("background", {})
+        self.bg_manager.set_background(
+            enabled=bg_cfg.get("enabled", False),
+            source=bg_cfg.get("source", "cyber_city"),
+            dimming=bg_cfg.get("dimming", 55)
+        )
+
     def on_remote_action(self, action: str):
         """Invoked when Web Remote triggers an action button."""
         if action == "next_theme":
             self.cycle_theme()
         elif action == "next_animation":
             self.cycle_animation()
+        elif action == "cycle_country":
+            self.cycle_country()
+        elif action == "toggle_background":
+            curr_bg = self.config.get("background", {}).get("enabled", False)
+            self.config_manager.set(not curr_bg, "background", "enabled")
+            self.bg_manager.enabled = not curr_bg
         elif action == "toggle_24h":
             val = not self.config.get("clock", {}).get("format_24h", False)
             self.config_manager.set(val, "clock", "format_24h")
@@ -165,6 +205,19 @@ class PiClockApp:
         self.set_animation(next_a)
         self.help_fade_timer = 2.0
 
+    def cycle_country(self):
+        """Cycle holiday country (IN -> US -> UK -> CA -> AU -> GLOBAL -> ALL)."""
+        curr = self.config.get("holiday", {}).get("country", "IN").upper()
+        try:
+            idx = COUNTRY_LIST.index(curr)
+            next_c = COUNTRY_LIST[(idx + 1) % len(COUNTRY_LIST)]
+        except ValueError:
+            next_c = COUNTRY_LIST[0]
+        self.config_manager.set(next_c, "holiday", "country")
+        self.holiday_manager.set_country(next_c)
+        self.help_fade_timer = 2.5
+        print(f"[PiClock] Holiday country set to: {next_c}")
+
     def toggle_fullscreen(self):
         self.is_fullscreen = not self.is_fullscreen
         self.config_manager.set(self.is_fullscreen, "display", "fullscreen")
@@ -186,6 +239,7 @@ class PiClockApp:
         self.height = h
         self.animation.resize(w, h)
         self.clock_renderer.resize(w, h)
+        self.bg_manager.resize(w, h)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -200,6 +254,14 @@ class PiClockApp:
                     self.cycle_animation()
                 elif event.key == pygame.K_c:
                     self.cycle_theme()
+                elif event.key == pygame.K_l:
+                    self.cycle_country()
+                elif event.key == pygame.K_g:
+                    # Toggle background wallpaper
+                    curr_bg = self.config.get("background", {}).get("enabled", False)
+                    self.config_manager.set(not curr_bg, "background", "enabled")
+                    self.bg_manager.enabled = not curr_bg
+                    self.help_fade_timer = 2.0
                 elif event.key == pygame.K_t:
                     curr_24h = self.config.get("clock", {}).get("format_24h", False)
                     self.config_manager.set(not curr_24h, "clock", "format_24h")
@@ -249,14 +311,26 @@ class PiClockApp:
             bg_color = self.current_theme.get("background", (10, 8, 20))
             self.screen.fill(bg_color)
 
-            # Update and draw animation
+            # Draw background wallpaper image if enabled
+            self.bg_manager.draw(self.screen)
+
+            # Update and draw animation (floating over background!)
             self.animation.update(dt)
             self.animation.draw(self.screen)
 
-            # Render clock, date, custom messages
+            # Holiday calculation
+            hol_cfg = self.config.get("holiday", {})
+            if hol_cfg.get("enabled", True):
+                holiday_text, is_today = self.holiday_manager.get_status_string(datetime.date.today())
+            else:
+                holiday_text, is_today = "", False
+
+            # Render clock, date, holiday banner, custom messages
             self.clock_renderer.render(
                 self.screen,
                 self.config,
+                holiday_text=holiday_text,
+                is_today_holiday=is_today,
                 show_help=self.show_help,
                 help_opacity=max(0.0, self.help_fade_timer)
             )

@@ -37,6 +37,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "enabled": True,
         "port": 8080,
         "bind_address": "0.0.0.0"
+    },
+    "holiday": {
+        "enabled": True,
+        "country": "IN",              # IN, US, UK, CA, AU, GLOBAL, ALL
+        "show_upcoming": True,
+        "custom_holidays": []
+    },
+    "background": {
+        "enabled": False,
+        "source": "cyber_city",       # preset name, URL, or local image path
+        "dimming": 55                 # 0 to 100% dark overlay for readability
     }
 }
 

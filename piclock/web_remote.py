@@ -6,6 +6,7 @@ Allows customizing colors, animations, clock settings, and messages from any pho
 
 import json
 import os
+import datetime
 import platform
 import socket
 import threading
@@ -13,6 +14,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Callable, Optional
 from .themes import THEMES, THEME_KEYS
 from .animations import ANIMATION_NAMES
+from .holidays import HolidayManager
 
 HTML_PAGE = """<!DOCTYPE html>
 <html lang="en">
@@ -417,9 +419,97 @@ HTML_PAGE = """<!DOCTYPE html>
             </div>
         </div>
 
+        <!-- Country Holidays -->
+        <div class="card">
+            <div class="card-title">🌍 Country & Holidays</div>
+            
+            <div class="control-group">
+                <label for="selCountry">Selected Country / Region:</label>
+                <select id="selCountry" onchange="saveConfig()">
+                    <option value="IN">🇮🇳 India (IN)</option>
+                    <option value="US">🇺🇸 United States (US)</option>
+                    <option value="UK">🇬🇧 United Kingdom (UK)</option>
+                    <option value="CA">🇨🇦 Canada (CA)</option>
+                    <option value="AU">🇦🇺 Australia (AU)</option>
+                    <option value="GLOBAL">🌐 Global / International</option>
+                    <option value="ALL">🌎 All Countries Combined</option>
+                </select>
+            </div>
+
+            <div class="switch-row" style="margin-top: 10px;">
+                <div class="switch-label">
+                    <div>Display Holidays on Clock</div>
+                    <div class="switch-desc">Show today's holiday or upcoming countdown banner</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="chkHoliday">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="switch-row">
+                <div class="switch-label">
+                    <div>Show Upcoming Countdown</div>
+                    <div class="switch-desc">Displays days remaining until the next holiday</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="chkUpcoming">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div id="holidayPreviewBox" style="margin-top: 12px; padding: 10px 14px; background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--primary);">
+                📅 Next: Loading...
+            </div>
+        </div>
+
+        <!-- Background Image & Wallpaper -->
+        <div class="card">
+            <div class="card-title">🖼️ Background Image / Wallpaper</div>
+
+            <div class="switch-row">
+                <div class="switch-label">
+                    <div>Enable Background Image</div>
+                    <div class="switch-desc">Display an online wallpaper behind the clock and animations</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="chkBgEnabled">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="control-group" style="margin-top: 12px;">
+                <label>Curated Wallpaper & Video Presets:</label>
+                <div class="anim-pills" style="margin-top: 4px;">
+                    <button class="anim-pill" onclick="selectBgPreset('oceans')">🌊 Ocean Waves</button>
+                    <button class="anim-pill" onclick="selectBgPreset('flower')">🌸 Blooming Flower</button>
+                    <button class="anim-pill" onclick="selectBgPreset('cyber_city')">🌆 Cyber City</button>
+                    <button class="anim-pill" onclick="selectBgPreset('cozy_lofi')">☕ Cozy Lofi</button>
+                    <button class="anim-pill" onclick="selectBgPreset('deep_space')">🌌 Deep Space</button>
+                    <button class="anim-pill" onclick="selectBgPreset('misty_forest')">🌲 Misty Forest</button>
+                    <button class="anim-pill" onclick="selectBgPreset('aurora_sky')">🏔️ Aurora Sky</button>
+                </div>
+            </div>
+
+            <div class="control-group" style="margin-top: 14px;">
+                <label for="txtBgUrl">Or Custom Online Image URL / Local Path:</label>
+                <input type="text" id="txtBgUrl" placeholder="https://example.com/wallpaper.jpg or local path">
+            </div>
+
+            <div style="margin-top: 14px;">
+                <label>Wallpaper Dimmer / Darkness (Improves clock legibility)</label>
+                <div class="range-wrap" style="margin-top: 6px;">
+                    <input type="range" id="bgDimming" min="10" max="90" step="5" value="55">
+                    <span class="range-val" id="bgDimmingVal">55%</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="actions-bar">
             <button class="btn btn-secondary" onclick="triggerAction('next_theme')">Cycle Theme</button>
+            <button class="btn btn-secondary" onclick="triggerAction('cycle_country')">Cycle Country</button>
+            <button class="btn btn-secondary" onclick="triggerAction('toggle_background')">Toggle Wallpaper</button>
             <button class="btn btn-secondary" onclick="triggerAction('next_animation')">Cycle Animation</button>
             <button class="btn" onclick="saveConfig()">Save & Apply</button>
         </div>
@@ -519,6 +609,28 @@ HTML_PAGE = """<!DOCTYPE html>
             document.getElementById('customMsg').value = cfg.clock.custom_message || '';
             document.getElementById('dispBrightness').value = cfg.display.brightness || 100;
             document.getElementById('dispBrightnessVal').textContent = (cfg.display.brightness || 100) + '%';
+
+            // Holiday controls
+            const hol = cfg.holiday || {};
+            if (document.getElementById('selCountry')) {
+                document.getElementById('selCountry').value = (hol.country || 'IN').toUpperCase();
+            }
+            if (document.getElementById('chkHoliday')) {
+                document.getElementById('chkHoliday').checked = hol.enabled !== false;
+            }
+            if (document.getElementById('chkUpcoming')) {
+                document.getElementById('chkUpcoming').checked = hol.show_upcoming !== false;
+            }
+            if (data.system && data.system.holiday_status && document.getElementById('holidayPreviewBox')) {
+                document.getElementById('holidayPreviewBox').textContent = data.system.holiday_status;
+            }
+
+            // Background controls
+            const bg = cfg.background || {};
+            document.getElementById('chkBgEnabled').checked = Boolean(bg.enabled);
+            document.getElementById('txtBgUrl').value = bg.source || 'cyber_city';
+            document.getElementById('bgDimming').value = bg.dimming !== undefined ? bg.dimming : 55;
+            document.getElementById('bgDimmingVal').textContent = (bg.dimming !== undefined ? bg.dimming : 55) + '%';
         }
 
         // Slider listeners
@@ -528,11 +640,23 @@ HTML_PAGE = """<!DOCTYPE html>
         document.getElementById('dispBrightness').oninput = (e) => {
             document.getElementById('dispBrightnessVal').textContent = e.target.value + '%';
         };
+        document.getElementById('bgDimming').oninput = (e) => {
+            document.getElementById('bgDimmingVal').textContent = e.target.value + '%';
+        };
+
+        function selectBgPreset(presetKey) {
+            document.getElementById('chkBgEnabled').checked = true;
+            document.getElementById('txtBgUrl').value = presetKey;
+            saveConfig();
+            showToast("Wallpaper preset selected!");
+        }
 
         async function saveConfig() {
             if (!currentConfig.visual) currentConfig.visual = {};
             if (!currentConfig.clock) currentConfig.clock = {};
             if (!currentConfig.display) currentConfig.display = {};
+            if (!currentConfig.holiday) currentConfig.holiday = {};
+            if (!currentConfig.background) currentConfig.background = {};
 
             currentConfig.clock.format_24h = document.getElementById('chk24h').checked;
             currentConfig.clock.show_seconds = document.getElementById('chkSeconds').checked;
@@ -542,6 +666,14 @@ HTML_PAGE = """<!DOCTYPE html>
             currentConfig.clock.custom_message = document.getElementById('customMsg').value;
             currentConfig.visual.animation_speed = parseFloat(document.getElementById('animSpeed').value);
             currentConfig.display.brightness = parseInt(document.getElementById('dispBrightness').value);
+
+            currentConfig.holiday.country = document.getElementById('selCountry').value;
+            currentConfig.holiday.enabled = document.getElementById('chkHoliday').checked;
+            currentConfig.holiday.show_upcoming = document.getElementById('chkUpcoming').checked;
+
+            currentConfig.background.enabled = document.getElementById('chkBgEnabled').checked;
+            currentConfig.background.source = document.getElementById('txtBgUrl').value;
+            currentConfig.background.dimming = parseInt(document.getElementById('bgDimming').value);
 
             try {
                 const res = await fetch('/api/config', {
@@ -613,15 +745,62 @@ class WebRemoteHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if self.path == "/" or self.path == "/index.html":
+        clean_path = self.path.split("?")[0].rstrip("/")
+        if clean_path in ("", "/index.html"):
             content = HTML_PAGE.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(content)))
             self.end_headers()
             self.wfile.write(content)
-        elif self.path == "/api/status":
+        elif clean_path in ("/preview", "/preview.html"):
+            preview_file = os.path.join(os.getcwd(), "preview.html")
+            if os.path.exists(preview_file):
+                with open(preview_file, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_response(404)
+                self.end_headers()
+        elif clean_path.startswith("/backgrounds/"):
+            rel_file = clean_path.lstrip("/")
+            file_path = os.path.join(os.getcwd(), rel_file)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                ext = os.path.splitext(file_path)[1].lower()
+                mime_types = {
+                    ".mp4": "video/mp4",
+                    ".webm": "video/webm",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".png": "image/png"
+                }
+                c_type = mime_types.get(ext, "application/octet-stream")
+                file_size = os.path.getsize(file_path)
+                with open(file_path, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", c_type)
+                self.send_header("Content-Length", str(file_size))
+                self.send_header("Accept-Ranges", "bytes")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_response(404)
+                self.end_headers()
+        elif clean_path == "/api/status":
             cfg = self.config_manager.data.copy() if self.config_manager else {}
+            hol_cfg = cfg.get("holiday", {})
+            try:
+                hm = HolidayManager(country=hol_cfg.get("country", "IN"))
+                h_status, _ = hm.get_status_string(datetime.date.today())
+            except Exception:
+                h_status = "Holidays ready"
+
             status_data = {
                 "config": cfg,
                 "themes": THEMES,
@@ -629,7 +808,8 @@ class WebRemoteHandler(BaseHTTPRequestHandler):
                 "system": {
                     "platform": platform.platform(),
                     "cpu_temp": get_cpu_temp(),
-                    "hostname": socket.gethostname()
+                    "hostname": socket.gethostname(),
+                    "holiday_status": h_status
                 }
             }
             self._send_json(status_data)

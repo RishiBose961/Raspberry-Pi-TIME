@@ -14,12 +14,29 @@ Built with **Python 3** and **SDL2/Pygame**, PiClock maintains silky-smooth 60 F
   - Configurable blinking or solid separator colon (`:`).
   - Full formatted calendar date with customizable format strings (`strftime`).
   - Customizable subtitle/greeting banner (e.g. *"Raspberry Pi 3 • Smart Display"* or daily quotes).
-- 🎆 **5 Built-in Animated Background Engines**:
+- 🌍 **National & Global Holidays (100% Offline)**:
+  - Built-in multi-country holiday calendar: **India (IN)**, **United States (US)**, **United Kingdom (UK)**, **Canada (CA)**, **Australia (AU)**, **Global**, or **All Countries**.
+  - Highlights today's holiday with a festive glowing badge (e.g. *🎉 Holiday: Diwali* or *🎉 Holiday: Christmas Day*).
+  - Shows days remaining countdown for upcoming holidays (e.g. *✨ Tomorrow: Children's Day* or *📅 Next: Thanksgiving Day (Nov 26 • in 13d)*).
+  - Support for custom user-defined dates (Birthdays, Anniversaries, Company events).
+- 🎆 **9 Built-in Animated Visual Engines**:
   1. **3D Starfield Warp**: Depth-projected space warp with dynamic speed trails.
   2. **Digital Matrix Rain**: Classic cyberpunk cascading phosphor code glyphs with bright leading heads.
   3. **Glowing Floating Embers**: Warm drifting ambient particles with translucent glow halos.
   4. **Neon Sine Waves**: Undulating harmonic ribbons floating across the horizon.
   5. **Minimalist Geometric Pulse**: Ultra-low-overhead (<1% CPU) breathing ambient rings and accent lines.
+  6. **Cozy Rain & Ripples**: Diagonal falling raindrops with wind sway and ground splash ripples.
+  7. **Enchanted Fireflies**: Organic wandering fireflies with breathing luminescence and bokeh halos.
+  8. **Northern Lights (Aurora)**: Ethereal polar aurora borealis celestial curtains flowing across the sky.
+  9. **80s Retro Grid**: Synthwave outrun 3D perspective wireframe ground grid scrolling towards the viewer.
+- 🖼️ **Online Image & Looping Video Wallpapers**:
+  - Load online background images (Unsplash, nature, sci-fi) or local wallpapers and MP4 video loops.
+  - Looping video wallpaper support in browser simulator (`.mp4`, `.webm`) with local offline video loops included (`backgrounds/oceans.mp4`, `backgrounds/flower.mp4`).
+  - Local media picker button to load your own video clips or photos directly from your device.
+  - Multi-tier fallback architecture: Local Video → Online CDN → Curated Wallpaper Poster (screen is NEVER blank!).
+  - Asynchronous background downloader with local caching (`backgrounds_cache/`) so clock animations never stutter.
+  - Built-in presets: *Deep Ocean Waves*, *Blooming Flowers*, *Cyberpunk City*, *Cozy Lofi Room*, *Cosmic Nebula*, *Misty Forest*, *Northern Lights Sky*.
+  - Configurable darkening dimmer overlay (10% to 90%) to guarantee 100% clock readability over any background image or video.
 - 🎨 **8 Curated Color Palettes**:
   - *Cyberpunk Neon* (Cyan & Hot Pink)
   - *Matrix Terminal* (Hacker Phosphor Green)
@@ -61,7 +78,7 @@ Double-click [`run.bat`](file:///d:/Rasberi/run.bat) or run in PowerShell / Comm
 *(Requires `pip install pygame-ce`, which is already installed on your system).*
 
 ### Option 2: Instant Interactive Web Simulator
-Open [`preview.html`](file:///d:/Rasberi/preview.html) in your browser (Edge, Chrome, or Firefox). It renders all 5 animations, clock modes, and themes in real-time with full keyboard hotkey support!
+Open [`preview.html`](file:///d:/Rasberi/preview.html) directly in your browser (Edge, Chrome, or Firefox), or via the built-in server at `http://localhost:8080/preview`. It renders all 9 animations, video loops, online wallpapers, holiday countdowns, and themes in real-time with full keyboard hotkey support!
 
 ---
 
@@ -203,8 +220,10 @@ When PiClock is running on your screen, you can use these keys:
 
 | Key | Action |
 | :--- | :--- |
-| `[M]` | Cycle Animation Mode (*Starfield → Matrix → Particles → Waves → Minimalist*) |
+| `[M]` | Cycle Animation Mode (*Starfield → Matrix → Particles → Waves → Minimalist → Rain → Fireflies → Aurora → Retro Grid*) |
 | `[C]` | Cycle Color Themes (*Cyberpunk, Matrix, Synthwave, Midnight, Amber, etc.*) |
+| `[L]` | Cycle Country Holidays (*India → United States → UK → Canada → Australia → Global → All*) |
+| `[G]` | Toggle Background Wallpaper on / off |
 | `[T]` | Toggle 12-Hour (AM/PM) / 24-Hour military time |
 | `[S]` | Toggle seconds display on / off |
 | `[F]` | Toggle Fullscreen / Windowed mode |
@@ -223,7 +242,7 @@ You can fine-tune every parameter directly in `config.json`:
 ```json
 {
     "display": {
-        "fullscreen": true,          // true for full display, false for windowed
+        "fullscreen": false,         // true for full display, false for windowed
         "width": 1024,               // default resolution width
         "height": 600,               // default resolution height
         "fps": 60,                   // 60 for ultra-smooth; 30 for ultra-low power
@@ -237,6 +256,15 @@ You can fine-tune every parameter directly in `config.json`:
         "date_format": "%A, %B %d, %Y", // standard strftime format
         "custom_message": "Raspberry Pi 3 • Smart Display",
         "show_message": true         // show/hide subtitle message
+    },
+    "holiday": {
+        "enabled": true,             // show/hide holidays on clock
+        "country": "IN",              // "IN" (India), "US", "UK", "CA", "AU", "GLOBAL", "ALL"
+        "show_upcoming": true,        // show upcoming countdown if today is not a holiday
+        "custom_holidays": [         // optional personal events
+            { "name": "Mom's Birthday", "month": 5, "day": 12 },
+            { "name": "Anniversary", "month": 11, "day": 20 }
+        ]
     },
     "visual": {
         "theme": "cyberpunk",        // cyberpunk, matrix, synthwave, midnight, amber, sakura, emerald, oled_dark

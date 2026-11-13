@@ -9,6 +9,10 @@ from .matrix import MatrixAnimation
 from .particles import ParticleAnimation
 from .waves import WaveAnimation
 from .minimalist import MinimalistAnimation
+from .rain import RainAnimation
+from .fireflies import FirefliesAnimation
+from .aurora import AuroraAnimation
+from .grid import RetroGridAnimation
 
 ANIMATION_MAP: Dict[str, Type[BaseAnimation]] = {
     "starfield": StarfieldAnimation,
@@ -16,6 +20,10 @@ ANIMATION_MAP: Dict[str, Type[BaseAnimation]] = {
     "particles": ParticleAnimation,
     "waves": WaveAnimation,
     "minimalist": MinimalistAnimation,
+    "rain": RainAnimation,
+    "fireflies": FirefliesAnimation,
+    "aurora": AuroraAnimation,
+    "retro_grid": RetroGridAnimation,
 }
 
 ANIMATION_NAMES = list(ANIMATION_MAP.keys())

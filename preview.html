@@ -18,11 +18,97 @@
             color: #fff;
         }
 
+        /* Background Video & Image Layer */
+        #bgMediaContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+            overflow: hidden;
+            display: none;
+            background: #080c16;
+        }
+        #bgFallbackGradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, #151c2e 0%, #060911 100%);
+            z-index: 1;
+        }
+        #bgImg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 2;
+            display: none;
+            transition: opacity 0.5s ease;
+        }
+        #bgVideo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 3;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        #bgVideo.playing {
+            opacity: 1;
+        }
+        #bgDimOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            pointer-events: none;
+            z-index: 4;
+        }
+        .video-play-prompt {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 240, 255, 0.22);
+            border: 1px solid #00f0ff;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+            color: #fff;
+            padding: 9px 20px;
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 100;
+            display: none;
+            backdrop-filter: blur(10px);
+            animation: pulsePrompt 2.2s infinite ease-in-out;
+            pointer-events: auto;
+            white-space: nowrap;
+        }
+        @keyframes pulsePrompt {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.4); }
+            50% { box-shadow: 0 0 26px rgba(0, 240, 255, 0.85); }
+        }
+
         #canvas {
             display: block;
             width: 100vw;
             height: 100vh;
             cursor: pointer;
+            position: relative;
+            z-index: 2;
         }
 
         /* Top HUD / Toolbar */
@@ -34,17 +120,17 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            background: rgba(15, 20, 32, 0.75);
+            background: rgba(15, 20, 32, 0.82);
             backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.14);
             padding: 8px 16px;
             border-radius: 30px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.5);
             z-index: 100;
-            transition: opacity 0.3s, transform 0.3s;
+            transition: border-color 0.3s;
         }
         .hud-bar:hover {
-            border-color: rgba(0, 240, 255, 0.4);
+            border-color: rgba(0, 240, 255, 0.5);
         }
         .pill-btn {
             background: rgba(255, 255, 255, 0.08);
@@ -59,6 +145,7 @@
             align-items: center;
             gap: 6px;
             transition: all 0.2s;
+            white-space: nowrap;
         }
         .pill-btn:hover {
             background: rgba(0, 240, 255, 0.2);
@@ -78,10 +165,10 @@
             bottom: 16px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(10, 14, 24, 0.7);
+            background: rgba(10, 14, 24, 0.75);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 6px 18px;
+            padding: 6px 20px;
             border-radius: 20px;
             font-size: 12px;
             font-family: 'JetBrains Mono', monospace;
@@ -89,6 +176,7 @@
             pointer-events: none;
             z-index: 90;
             letter-spacing: 0.5px;
+            white-space: nowrap;
         }
         .shortcuts-hint span {
             color: #00f0ff;
@@ -100,16 +188,18 @@
             position: absolute;
             top: 70px;
             right: 20px;
-            width: 320px;
-            background: rgba(15, 22, 36, 0.9);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 16px;
-            padding: 18px;
+            width: 340px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            background: rgba(15, 22, 36, 0.94);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 18px;
+            padding: 20px;
             display: none;
             flex-direction: column;
-            gap: 14px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            gap: 12px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.7);
             z-index: 110;
         }
         .controls-drawer.open { display: flex; }
@@ -120,12 +210,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 8px;
         }
         .close-btn {
             background: none;
             border: none;
             color: #94a3b8;
-            font-size: 18px;
+            font-size: 20px;
             cursor: pointer;
         }
         .drawer-row {
@@ -134,6 +226,14 @@
             align-items: center;
             font-size: 13px;
             color: #cbd5e1;
+        }
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00f0ff;
+            margin-top: 8px;
         }
         select, input[type="text"], input[type="range"] {
             background: #090d16;
@@ -145,6 +245,7 @@
             font-family: inherit;
             font-size: 12px;
         }
+        select { max-width: 170px; }
         input[type="range"] { accent-color: #00f0ff; }
         .toast {
             position: fixed;
@@ -169,12 +270,25 @@
     </style>
 </head>
 <body>
+    <!-- Background Image & Video Layer -->
+    <div id="bgMediaContainer">
+        <div id="bgFallbackGradient"></div>
+        <img id="bgImg" src="" alt="Background">
+        <video id="bgVideo" autoplay loop muted playsinline preload="auto"></video>
+        <div id="bgDimOverlay"></div>
+    </div>
+
+    <!-- Interactive Video Playback Prompt (Shown if browser pauses autoplay) -->
+    <div id="videoPrompt" class="video-play-prompt" onclick="startVideoPlayback()">▶ Click Anywhere to Play Background Video</div>
+
     <canvas id="canvas"></canvas>
 
     <!-- Top Quick Control Bar -->
     <div class="hud-bar">
         <button class="pill-btn" onclick="cycleAnimation()">✨ <span id="animLabel">Starfield</span></button>
         <button class="pill-btn" onclick="cycleTheme()">🎨 <span id="themeLabel">Cyberpunk</span></button>
+        <button class="pill-btn" onclick="cycleCountry()">🌍 <span id="countryLabel">India (IN)</span></button>
+        <button class="pill-btn" onclick="toggleBackground()">🖼️ <span id="bgHudLabel">Wallpaper: OFF</span></button>
         <button class="pill-btn" onclick="toggleFormat24h()"><span id="formatLabel">12-Hour</span></button>
         <button class="pill-btn" onclick="toggleDrawer()">⚙️ Settings</button>
         <button class="pill-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
@@ -186,6 +300,8 @@
             <span>⚙️ Customization Panel</span>
             <button class="close-btn" onclick="toggleDrawer()">&times;</button>
         </div>
+
+        <div class="section-label">Animation & Palette</div>
         <div class="drawer-row">
             <span>Animation Mode</span>
             <select id="selAnim" onchange="setAnimation(this.value)">
@@ -194,6 +310,10 @@
                 <option value="particles">Floating Embers</option>
                 <option value="waves">Neon Sine Waves</option>
                 <option value="minimalist">Minimalist Pulse</option>
+                <option value="rain">Cozy Rain & Ripples</option>
+                <option value="fireflies">Enchanted Fireflies</option>
+                <option value="aurora">Northern Lights (Aurora)</option>
+                <option value="retro_grid">80s Retro Grid</option>
             </select>
         </div>
         <div class="drawer-row">
@@ -210,6 +330,64 @@
             </select>
         </div>
         <div class="drawer-row">
+            <span>Animation Speed: <b id="spdVal">1.0x</b></span>
+            <input type="range" min="0.2" max="3.0" step="0.1" value="1.0" oninput="setSpeed(this.value)">
+        </div>
+
+        <div class="section-label">Background Wallpaper / Video</div>
+        <div class="drawer-row">
+            <span>Enable Wallpaper</span>
+            <input type="checkbox" id="chkBg" onchange="setBackgroundEnabled(this.checked)">
+        </div>
+        <div class="drawer-row">
+            <span>Media Preset</span>
+            <select id="selBgPreset" onchange="applyBgPreset(this.value)">
+                <option value="oceans">🌊 Deep Ocean Waves (Video)</option>
+                <option value="flower">🌸 Blooming Flower (Video)</option>
+                <option value="cyber_city">🌆 Cyber City (Online Image)</option>
+                <option value="cozy_lofi">☕ Cozy Lofi Room (Online Image)</option>
+                <option value="deep_space">🌌 Cosmic Nebula (Online Image)</option>
+                <option value="misty_forest">🌲 Misty Forest (Online Image)</option>
+                <option value="aurora_sky">🏔️ Northern Lights (Online Image)</option>
+            </select>
+        </div>
+        <div class="drawer-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <span>📂 Choose Video / Image File from PC:</span>
+            <input type="file" id="localMediaPicker" accept="video/mp4,video/webm,image/*" style="width: 100%; font-size: 11px; padding: 6px; background: #131c2e; border: 1px dashed rgba(0,240,255,0.4); border-radius: 6px;" onchange="handleLocalFileSelect(this)">
+        </div>
+        <div class="drawer-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <span>Or Online Image / Video MP4 URL:</span>
+            <input type="text" style="width: 100%;" id="txtCustomBg" placeholder="https://example.com/video.mp4" onchange="setCustomBg(this.value)">
+        </div>
+        <div class="drawer-row">
+            <span>Wallpaper Dimmer: <b id="bgDimVal">55%</b></span>
+            <input type="range" min="10" max="90" step="5" value="55" oninput="setBgDimming(this.value)">
+        </div>
+
+        <div class="section-label">Country & Holidays</div>
+        <div class="drawer-row">
+            <span>Country Holidays</span>
+            <select id="selCountry" onchange="setCountry(this.value)">
+                <option value="IN">🇮🇳 India (IN)</option>
+                <option value="US">🇺🇸 United States (US)</option>
+                <option value="UK">🇬🇧 United Kingdom (UK)</option>
+                <option value="CA">🇨🇦 Canada (CA)</option>
+                <option value="AU">🇦🇺 Australia (AU)</option>
+                <option value="GLOBAL">🌐 Global / International</option>
+                <option value="ALL">🌎 All Countries Combined</option>
+            </select>
+        </div>
+        <div class="drawer-row">
+            <span>Show Holidays</span>
+            <input type="checkbox" id="chkHoliday" checked onchange="config.showHoliday = this.checked">
+        </div>
+        <div class="drawer-row">
+            <span>Holiday Countdown</span>
+            <input type="checkbox" id="chkUpcoming" checked onchange="config.showUpcoming = this.checked">
+        </div>
+
+        <div class="section-label">Clock Display</div>
+        <div class="drawer-row">
             <span>Show Seconds</span>
             <input type="checkbox" id="chkSec" checked onchange="config.showSeconds = this.checked">
         </div>
@@ -220,10 +398,6 @@
         <div class="drawer-row">
             <span>Glow Aura</span>
             <input type="checkbox" id="chkGlow" checked onchange="config.glow = this.checked">
-        </div>
-        <div class="drawer-row">
-            <span>Speed: <b id="spdVal">1.0x</b></span>
-            <input type="range" min="0.2" max="3.0" step="0.1" value="1.0" oninput="setSpeed(this.value)">
         </div>
         <div class="drawer-row">
             <span>Night Dimmer: <b id="dimVal">100%</b></span>
@@ -237,7 +411,7 @@
 
     <!-- Bottom Shortcut Legend -->
     <div class="shortcuts-hint">
-        <span>[M]</span> Animation &nbsp;•&nbsp; <span>[C]</span> Theme &nbsp;•&nbsp; <span>[T]</span> 12/24h &nbsp;•&nbsp; <span>[S]</span> Seconds &nbsp;•&nbsp; <span>[B]</span> Dimmer &nbsp;•&nbsp; <span>[F]</span> Fullscreen
+        <span>[M]</span> Animation &nbsp;•&nbsp; <span>[C]</span> Theme &nbsp;•&nbsp; <span>[L]</span> Country &nbsp;•&nbsp; <span>[G]</span> Wallpaper &nbsp;•&nbsp; <span>[T]</span> 12/24h &nbsp;•&nbsp; <span>[S]</span> Seconds &nbsp;•&nbsp; <span>[B]</span> Dimmer &nbsp;•&nbsp; <span>[F]</span> Fullscreen
     </div>
 
     <div class="toast" id="toast"></div>
@@ -338,12 +512,18 @@
         };
 
         const THEME_KEYS = Object.keys(THEMES);
-        const ANIM_KEYS = ["starfield", "matrix", "particles", "waves", "minimalist"];
+        const ANIM_KEYS = ["starfield", "matrix", "particles", "waves", "minimalist", "rain", "fireflies", "aurora", "retro_grid"];
 
         // State Config
         const config = {
             theme: "cyberpunk",
             anim: "starfield",
+            country: "IN",
+            showHoliday: true,
+            showUpcoming: true,
+            bgEnabled: false,
+            bgSource: "oceans",
+            bgDimming: 55,
             format24h: false,
             showSeconds: true,
             blinkColon: true,
@@ -353,6 +533,173 @@
             customMsg: "Raspberry Pi 3 • Smart Display"
         };
 
+        const BG_PRESETS = {
+            oceans: {
+                type: "video",
+                url: "backgrounds/oceans.mp4",
+                fallback: "https://vjs.zencdn.net/v/oceans.mp4",
+                poster: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&q=80",
+                name: "Deep Ocean Waves (Video)"
+            },
+            flower: {
+                type: "video",
+                url: "backgrounds/flower.mp4",
+                fallback: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+                poster: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1600&q=80",
+                name: "Blooming Flowers (Video)"
+            },
+            cyber_city: {
+                type: "image",
+                url: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1600&q=80",
+                name: "Cyber City (Online Image)"
+            },
+            cozy_lofi: {
+                type: "image",
+                url: "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1600&q=80",
+                name: "Cozy Lofi Room (Online Image)"
+            },
+            deep_space: {
+                type: "image",
+                url: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=1600&q=80",
+                name: "Cosmic Nebula (Online Image)"
+            },
+            misty_forest: {
+                type: "image",
+                url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1600&q=80",
+                name: "Misty Forest (Online Image)"
+            },
+            aurora_sky: {
+                type: "image",
+                url: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1600&q=80",
+                name: "Northern Lights (Online Image)"
+            }
+        };
+
+        const COUNTRIES = ["IN", "US", "UK", "CA", "AU", "GLOBAL", "ALL"];
+        const COUNTRY_LABELS = {
+            "IN": "India (IN)",
+            "US": "United States (US)",
+            "UK": "United Kingdom (UK)",
+            "CA": "Canada (CA)",
+            "AU": "Australia (AU)",
+            "GLOBAL": "Global",
+            "ALL": "All Countries"
+        };
+
+        // ================= HOLIDAYS ENGINE (JS) =================
+        const FIXED_HOLIDAYS_JS = [
+            { m: 1, d: 1, name: "New Year's Day", c: "ALL" },
+            { m: 1, d: 14, name: "Makar Sankranti / Pongal", c: "IN" },
+            { m: 1, d: 26, name: "Republic Day", c: "IN" },
+            { m: 1, d: 26, name: "Australia Day", c: "AU" },
+            { m: 2, d: 14, name: "Valentine's Day", c: "GLOBAL" },
+            { m: 3, d: 8, name: "International Women's Day", c: "GLOBAL" },
+            { m: 4, d: 14, name: "Ambedkar Jayanti", c: "IN" },
+            { m: 4, d: 22, name: "Earth Day", c: "GLOBAL" },
+            { m: 4, d: 25, name: "Anzac Day", c: "AU" },
+            { m: 5, d: 1, name: "Labour / Workers' Day", c: "IN,GLOBAL" },
+            { m: 6, d: 19, name: "Juneteenth", c: "US" },
+            { m: 7, d: 1, name: "Canada Day", c: "CA" },
+            { m: 7, d: 4, name: "Independence Day", c: "US" },
+            { m: 8, d: 15, name: "Independence Day", c: "IN" },
+            { m: 9, d: 30, name: "Truth and Reconciliation", c: "CA" },
+            { m: 10, d: 2, name: "Gandhi Jayanti", c: "IN" },
+            { m: 10, d: 31, name: "Halloween", c: "US,UK,CA,GLOBAL" },
+            { m: 11, d: 11, name: "Veterans / Remembrance Day", c: "US,CA,UK" },
+            { m: 11, d: 14, name: "Children's Day", c: "IN" },
+            { m: 12, d: 25, name: "Christmas Day", c: "ALL" },
+            { m: 12, d: 26, name: "Boxing Day", c: "UK,CA,AU" },
+            { m: 12, d: 31, name: "New Year's Eve", c: "ALL" }
+        ];
+
+        const MOVABLE_HOLIDAYS_JS = [
+            // 2026
+            { y: 2026, m: 2, d: 15, name: "Maha Shivratri", c: "IN" },
+            { y: 2026, m: 3, d: 4, name: "Holi", c: "IN" },
+            { y: 2026, m: 3, d: 20, name: "Eid ul-Fitr", c: "IN" },
+            { y: 2026, m: 4, d: 3, name: "Good Friday", c: "GLOBAL" },
+            { y: 2026, m: 4, d: 5, name: "Easter Sunday", c: "GLOBAL" },
+            { y: 2026, m: 5, d: 27, name: "Bakrid / Eid al-Adha", c: "IN" },
+            { y: 2026, m: 8, d: 28, name: "Raksha Bandhan", c: "IN" },
+            { y: 2026, m: 9, d: 4, name: "Janmashtami", c: "IN" },
+            { y: 2026, m: 9, d: 14, name: "Ganesh Chaturthi", c: "IN" },
+            { y: 2026, m: 10, d: 20, name: "Dussehra", c: "IN" },
+            { y: 2026, m: 11, d: 8, name: "Diwali / Deepavali", c: "IN" },
+            { y: 2026, m: 11, d: 24, name: "Guru Nanak Jayanti", c: "IN" },
+            { y: 2026, m: 11, d: 26, name: "Thanksgiving Day", c: "US" },
+
+            // 2025
+            { y: 2025, m: 3, d: 14, name: "Holi", c: "IN" },
+            { y: 2025, m: 3, d: 31, name: "Eid ul-Fitr", c: "IN" },
+            { y: 2025, m: 10, d: 20, name: "Diwali / Deepavali", c: "IN" },
+            { y: 2025, m: 11, d: 27, name: "Thanksgiving Day", c: "US" },
+
+            // 2027
+            { y: 2027, m: 3, d: 23, name: "Holi", c: "IN" },
+            { y: 2027, m: 3, d: 10, name: "Eid ul-Fitr", c: "IN" },
+            { y: 2027, m: 10, d: 29, name: "Diwali / Deepavali", c: "IN" },
+            { y: 2027, m: 11, d: 25, name: "Thanksgiving Day", c: "US" }
+        ];
+
+        function getHolidayStatus(now) {
+            if (!config.showHoliday) return { text: "", isToday: false };
+            const y = now.getFullYear();
+            const m = now.getMonth() + 1;
+            const d = now.getDate();
+            const country = config.country;
+
+            function matches(c) {
+                if (country === "ALL" || c === "ALL" || c === "GLOBAL") return true;
+                return c.split(",").map(s => s.trim()).includes(country);
+            }
+
+            // Check Today
+            for (let h of FIXED_HOLIDAYS_JS) {
+                if (h.m === m && h.d === d && matches(h.c)) {
+                    return { text: "🎉 Holiday: " + h.name, isToday: true };
+                }
+            }
+            for (let h of MOVABLE_HOLIDAYS_JS) {
+                if (h.y === y && h.m === m && h.d === d && matches(h.c)) {
+                    return { text: "🎉 Holiday: " + h.name, isToday: true };
+                }
+            }
+
+            if (!config.showUpcoming) return { text: "", isToday: false };
+
+            // Find Next Holiday
+            let list = [];
+            [y, y + 1].forEach(yr => {
+                FIXED_HOLIDAYS_JS.forEach(h => {
+                    if (matches(h.c)) {
+                        list.push({ date: new Date(yr, h.m - 1, h.d), name: h.name });
+                    }
+                });
+                MOVABLE_HOLIDAYS_JS.forEach(h => {
+                    if (h.y === yr && matches(h.c)) {
+                        list.push({ date: new Date(yr, h.m - 1, h.d), name: h.name });
+                    }
+                });
+            });
+
+            const todayMidnight = new Date(y, m - 1, d);
+            list.sort((a, b) => a.date - b.date);
+
+            for (let h of list) {
+                const diffTime = h.date.getTime() - todayMidnight.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 0) {
+                    const dateStr = h.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    if (diffDays === 1) {
+                        return { text: "✨ Tomorrow: " + h.name, isToday: false };
+                    }
+                    return { text: `📅 Next: ${h.name} (${dateStr} • in ${diffDays}d)`, isToday: false };
+                }
+            }
+
+            return { text: "", isToday: false };
+        }
+
         let width = 0, height = 0;
         function resize() {
             width = canvas.width = window.innerWidth;
@@ -360,6 +707,8 @@
             initStarfield();
             initMatrix();
             initParticles();
+            initRain();
+            initFireflies();
         }
         window.addEventListener('resize', resize);
 
@@ -504,13 +853,11 @@
                 if (p.x > width + 20) p.x = -10;
 
                 ctx.fillStyle = p.color;
-                // Outer glow
                 ctx.globalAlpha = 0.25;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.radius * 2.5, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Core
                 ctx.globalAlpha = 0.85;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
@@ -571,7 +918,6 @@
             ctx.arc(cx, cy, radius + 25, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Hairline
             const lineY = height * 0.72;
             const lineW = width * (0.4 + breath * 0.1);
             ctx.globalAlpha = 0.3 + breath * 0.3;
@@ -580,6 +926,184 @@
             ctx.lineTo(cx + lineW / 2, lineY);
             ctx.stroke();
 
+            ctx.globalAlpha = 1;
+        }
+
+        // ================= ANIMATION: RAIN & RIPPLES =================
+        let raindrops = [];
+        let ripples = [];
+        function initRain() {
+            raindrops = [];
+            ripples = [];
+            const count = Math.min(130, Math.floor(width * 0.11));
+            for (let i = 0; i < count; i++) {
+                raindrops.push({
+                    x: Math.random() * (width + 200) - 100,
+                    y: Math.random() * height,
+                    len: Math.random() * 16 + 10,
+                    speed: Math.random() * 300 + 400,
+                    color: THEMES[config.theme].anim[0]
+                });
+            }
+        }
+        function drawRain(dt) {
+            const wind = Math.sin(performance.now() * 0.001) * 35;
+            for (let r of raindrops) {
+                r.y += r.speed * config.speed * dt;
+                r.x += wind * dt * config.speed;
+
+                if (r.y > height) {
+                    if (ripples.length < 25 && Math.random() < 0.3) {
+                        ripples.push({ x: r.x, y: height - Math.random() * 20, rad: 2, maxRad: Math.random() * 15 + 8, alpha: 0.8 });
+                    }
+                    r.y = -20;
+                    r.x = Math.random() * (width + 200) - 100;
+                    r.color = THEMES[config.theme].anim[Math.floor(Math.random() * THEMES[config.theme].anim.length)];
+                }
+
+                ctx.strokeStyle = r.color;
+                ctx.lineWidth = 1.5;
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.moveTo(r.x, r.y);
+                ctx.lineTo(r.x + (wind * 0.1), r.y + r.len);
+                ctx.stroke();
+            }
+
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const rp = ripples[i];
+                rp.rad += 35 * dt * config.speed;
+                rp.alpha -= 1.8 * dt * config.speed;
+                if (rp.alpha <= 0 || rp.rad >= rp.maxRad) {
+                    ripples.splice(i, 1);
+                    continue;
+                }
+                ctx.strokeStyle = THEMES[config.theme].primary;
+                ctx.globalAlpha = rp.alpha;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.ellipse(rp.x, rp.y, rp.rad, rp.rad * 0.35, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // ================= ANIMATION: FIREFLIES =================
+        let fireflies = [];
+        function initFireflies() {
+            fireflies = [];
+            const count = Math.min(50, Math.floor(width * 0.04));
+            for (let i = 0; i < count; i++) {
+                fireflies.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 22,
+                    vy: (Math.random() - 0.5) * 22,
+                    radius: Math.random() * 4 + 3,
+                    pulseSpeed: Math.random() * 2 + 1.2,
+                    phase: Math.random() * Math.PI * 2,
+                    color: THEMES[config.theme].anim[Math.floor(Math.random() * THEMES[config.theme].anim.length)]
+                });
+            }
+        }
+        function drawFireflies(dt) {
+            for (let f of fireflies) {
+                f.phase += f.pulseSpeed * config.speed * dt;
+                f.x += f.vx * dt * config.speed;
+                f.y += f.vy * dt * config.speed;
+
+                if (f.x < -20) f.x = width + 20;
+                else if (f.x > width + 20) f.x = -20;
+                if (f.y < -20) f.y = height + 20;
+                else if (f.y > height + 20) f.y = -20;
+
+                const pulse = Math.pow((Math.sin(f.phase) + 1) / 2, 2);
+
+                ctx.fillStyle = f.color;
+                ctx.globalAlpha = 0.25 * pulse;
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.radius * 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 0.9 * pulse;
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // ================= ANIMATION: AURORA =================
+        let auroraTime = 0;
+        function drawAurora(dt) {
+            auroraTime += dt * config.speed * 0.9;
+            const stepX = 20;
+            const theme = THEMES[config.theme];
+            const colors = theme.anim;
+
+            const layers = [
+                { baseY: height * 0.35, amp: height * 0.14, freq: 0.004, mult: 0.8, color: colors[0], curtain: height * 0.35, alpha: 0.25 },
+                { baseY: height * 0.42, amp: height * 0.16, freq: 0.006, mult: -1.0, color: colors[1] || colors[0], curtain: height * 0.28, alpha: 0.20 },
+                { baseY: height * 0.28, amp: height * 0.11, freq: 0.003, mult: 1.3, color: colors[2] || colors[0], curtain: height * 0.38, alpha: 0.16 }
+            ];
+
+            for (let lyr of layers) {
+                ctx.fillStyle = lyr.color;
+                ctx.globalAlpha = lyr.alpha;
+
+                for (let x = 0; x <= width + stepX; x += stepX) {
+                    const y = lyr.baseY + Math.sin(x * lyr.freq + auroraTime * lyr.mult) * lyr.amp +
+                              Math.cos(x * lyr.freq * 0.6 + auroraTime * 0.6) * (lyr.amp * 0.4);
+
+                    ctx.fillRect(x, y - lyr.curtain, stepX + 2, lyr.curtain);
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // ================= ANIMATION: RETRO GRID =================
+        let gridOffset = 0;
+        function drawRetroGrid(dt) {
+            gridOffset = (gridOffset + dt * config.speed * 1.6) % 1.0;
+            const horizonY = Math.floor(height * 0.52);
+            const groundH = height - horizonY;
+            const cx = width / 2;
+            const theme = THEMES[config.theme];
+
+            ctx.strokeStyle = theme.accent;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, horizonY);
+            ctx.lineTo(width, horizonY);
+            ctx.stroke();
+
+            const numV = 16;
+            ctx.strokeStyle = theme.primary;
+            ctx.lineWidth = 1;
+            for (let i = -numV; i <= numV; i++) {
+                const bottomX = cx + i * (width / (numV * 0.9));
+                const factor = Math.max(0.15, 1 - Math.abs(i) / (numV + 2));
+                ctx.globalAlpha = factor;
+                ctx.beginPath();
+                ctx.moveTo(cx, horizonY);
+                ctx.lineTo(bottomX, height);
+                ctx.stroke();
+            }
+
+            const numH = 14;
+            for (let i = 0; i < numH; i++) {
+                const progress = (i + gridOffset) / numH;
+                const depth = Math.pow(progress, 2.8);
+                const lineY = horizonY + depth * groundH;
+                if (lineY > horizonY && lineY <= height) {
+                    ctx.globalAlpha = Math.max(0.1, depth * 1.2);
+                    ctx.lineWidth = depth > 0.6 ? 2 : 1;
+                    ctx.beginPath();
+                    ctx.moveTo(0, lineY);
+                    ctx.lineTo(width, lineY);
+                    ctx.stroke();
+                }
+            }
             ctx.globalAlpha = 1;
         }
 
@@ -623,8 +1147,31 @@
             const extraW = config.showSeconds || ampm ? secMetrics.width : 0;
             const totalW = timeW + extraW;
 
+            // Center coordinates with dynamic holiday distribution
+            const hol = getHolidayStatus(now);
+            const hasHoliday = Boolean(hol.text);
+            const hasMsg = Boolean(config.customMsg);
+
+            let timeY, dateY, holidayY, msgY;
+            if (hasHoliday && hasMsg) {
+                timeY = height * 0.35;
+                dateY = height * 0.53;
+                holidayY = height * 0.67;
+                msgY = height * 0.81;
+            } else if (hasHoliday) {
+                timeY = height * 0.38;
+                dateY = height * 0.56;
+                holidayY = height * 0.70;
+                msgY = height * 0.83;
+            } else {
+                timeY = height * 0.40;
+                dateY = height * 0.60;
+                holidayY = height * 0.70;
+                msgY = height * 0.78;
+            }
+
             const startX = (width - totalW) / 2;
-            const centerY = height * 0.40;
+            const centerY = timeY;
 
             // Glow styling
             if (config.glow) {
@@ -669,20 +1216,52 @@
             ctx.textAlign = "center";
             if (config.glow) ctx.shadowColor = theme.date;
             ctx.fillStyle = theme.date;
-            ctx.fillText(dateStr, width / 2, height * 0.60);
+            ctx.fillText(dateStr, width / 2, dateY);
 
-            // 3. Custom Subtitle
+            // 3. Holiday Banner
+            if (hasHoliday) {
+                ctx.textAlign = "center";
+                const holSize = Math.max(13, Math.floor(height * 0.048));
+                ctx.font = `700 ${holSize}px 'Plus Jakarta Sans', sans-serif`;
+
+                if (hol.isToday) {
+                    const textMetrics = ctx.measureText(hol.text);
+                    const bw = textMetrics.width + 36;
+                    const bh = holSize * 1.6;
+                    const bx = (width - bw) / 2;
+                    const by = holidayY - bh / 2;
+
+                    ctx.fillStyle = "rgba(255, 200, 0, 0.18)";
+                    ctx.strokeStyle = "rgba(255, 215, 0, 0.7)";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 12);
+                    else ctx.rect(bx, by, bw, bh);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    if (config.glow) ctx.shadowColor = "#ffd700";
+                    ctx.fillStyle = "#ffe066";
+                    ctx.fillText(hol.text, width / 2, holidayY);
+                } else {
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = theme.accent;
+                    ctx.fillText(hol.text, width / 2, holidayY);
+                }
+            }
+
+            // 4. Custom Subtitle
             if (config.customMsg) {
                 ctx.shadowBlur = 0;
                 ctx.font = `italic 500 ${msgSize}px 'Plus Jakarta Sans', sans-serif`;
                 ctx.fillStyle = theme.msg;
-                ctx.fillText(config.customMsg, width / 2, height * 0.78);
+                ctx.fillText(config.customMsg, width / 2, msgY);
             }
 
             ctx.textAlign = "start"; // Reset
             ctx.shadowBlur = 0;
 
-            // 4. Night Dimmer
+            // 5. Night Dimmer
             if (config.brightness < 100) {
                 const alpha = (1 - (config.brightness / 100));
                 ctx.fillStyle = `rgba(0,0,0,${alpha})`;
@@ -696,16 +1275,24 @@
             const dt = Math.min(0.1, (now - lastTime) / 1000);
             lastTime = now;
 
-            // Fill background
-            ctx.fillStyle = THEMES[config.theme].bg;
-            ctx.fillRect(0, 0, width, height);
+            // Clear or fill background
+            if (config.bgEnabled) {
+                ctx.clearRect(0, 0, width, height);
+            } else {
+                ctx.fillStyle = THEMES[config.theme].bg;
+                ctx.fillRect(0, 0, width, height);
+            }
 
-            // Render active animation
+            // Render active animation (floats on top of wallpaper!)
             if (config.anim === "starfield") drawStarfield(dt);
             else if (config.anim === "matrix") drawMatrix(dt);
             else if (config.anim === "particles") drawParticles(dt);
             else if (config.anim === "waves") drawWaves(dt);
             else if (config.anim === "minimalist") drawMinimalist(dt);
+            else if (config.anim === "rain") drawRain(dt);
+            else if (config.anim === "fireflies") drawFireflies(dt);
+            else if (config.anim === "aurora") drawAurora(dt);
+            else if (config.anim === "retro_grid") drawRetroGrid(dt);
 
             // Render clock & typography
             drawClock();
@@ -713,11 +1300,194 @@
             requestAnimationFrame(loop);
         }
 
+        // ================= BACKGROUND MEDIA CONTROLLER =================
+        function startVideoPlayback() {
+            const vid = document.getElementById('bgVideo');
+            const prompt = document.getElementById('videoPrompt');
+            if (vid) {
+                vid.muted = true;
+                vid.defaultMuted = true;
+                vid.play().then(() => {
+                    vid.classList.add('playing');
+                    if (prompt) prompt.style.display = 'none';
+                }).catch(err => {
+                    console.warn("Manual playback trigger waiting for interaction:", err);
+                });
+            }
+        }
+
+        function updateBackgroundMedia() {
+            const container = document.getElementById('bgMediaContainer');
+            const img = document.getElementById('bgImg');
+            const vid = document.getElementById('bgVideo');
+            const overlay = document.getElementById('bgDimOverlay');
+            const hudLabel = document.getElementById('bgHudLabel');
+            const prompt = document.getElementById('videoPrompt');
+
+            if (!config.bgEnabled) {
+                container.style.display = 'none';
+                vid.pause();
+                vid.classList.remove('playing');
+                if (prompt) prompt.style.display = 'none';
+                hudLabel.textContent = "Wallpaper: OFF";
+                return;
+            }
+
+            container.style.display = 'block';
+            hudLabel.textContent = "Wallpaper: ON";
+            overlay.style.background = `rgba(0, 0, 0, ${config.bgDimming / 100})`;
+
+            let source = config.bgSource;
+            let type = "image";
+            let url = source;
+            let poster = "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1600&q=80";
+
+            if (BG_PRESETS[source]) {
+                type = BG_PRESETS[source].type;
+                url = BG_PRESETS[source].url;
+                if (BG_PRESETS[source].poster) poster = BG_PRESETS[source].poster;
+            } else if (source.startsWith('blob:') || /\.(mp4|webm|mkv|mov)(\?.*)?$/i.test(source)) {
+                type = "video";
+            }
+
+            if (type === "video") {
+                // Ensure poster image is visible immediately so the screen is NEVER blank
+                if (poster && !img.src.includes(poster)) {
+                    img.src = poster;
+                }
+                img.style.display = 'block';
+
+                vid.style.display = 'block';
+                vid.muted = true;
+                vid.defaultMuted = true;
+                vid.loop = true;
+                vid.playsInline = true;
+
+                vid.onplaying = () => {
+                    vid.classList.add('playing');
+                    if (prompt) prompt.style.display = 'none';
+                };
+
+                vid.onpause = () => {
+                    if (config.bgEnabled && type === 'video') {
+                        if (prompt) prompt.style.display = 'block';
+                    }
+                };
+
+                vid.onerror = (e) => {
+                    console.warn("Video failed from:", vid.src, e);
+                    const preset = BG_PRESETS[source];
+                    if (preset && preset.fallback && !vid.src.includes(preset.fallback)) {
+                        console.log("Trying online fallback video URL:", preset.fallback);
+                        vid.src = preset.fallback;
+                        vid.load();
+                        vid.play().catch(() => {
+                            if (prompt) prompt.style.display = 'block';
+                        });
+                    } else {
+                        // Switch gracefully to poster image
+                        vid.style.display = 'none';
+                        vid.classList.remove('playing');
+                        img.style.display = 'block';
+                        if (prompt) prompt.style.display = 'none';
+                        showToast("ℹ️ Displaying animated wallpaper");
+                    }
+                };
+
+                // Load source
+                const targetSrc = url;
+                if (!vid.src.endsWith(targetSrc) && vid.src !== targetSrc) {
+                    vid.classList.remove('playing');
+                    vid.src = targetSrc;
+                    vid.load();
+                }
+
+                const playPromise = vid.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        vid.classList.add('playing');
+                        if (prompt) prompt.style.display = 'none';
+                    }).catch(err => {
+                        console.warn("Autoplay waiting for user gesture:", err);
+                        if (prompt) prompt.style.display = 'block';
+                    });
+                }
+            } else {
+                // Image mode
+                vid.style.display = 'none';
+                vid.classList.remove('playing');
+                vid.pause();
+                if (prompt) prompt.style.display = 'none';
+
+                img.style.display = 'block';
+                img.onerror = () => {
+                    showToast("⚠️ Wallpaper image could not be loaded");
+                };
+                if (!img.src.endsWith(url) && img.src !== url) {
+                    img.src = url;
+                }
+            }
+        }
+
+        function handleLocalFileSelect(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const fileUrl = URL.createObjectURL(file);
+                config.bgSource = fileUrl;
+                config.bgEnabled = true;
+                document.getElementById('chkBg').checked = true;
+                updateBackgroundMedia();
+                startVideoPlayback();
+                showToast("Loaded: " + file.name);
+            }
+        }
+
+        function toggleBackground() {
+            config.bgEnabled = !config.bgEnabled;
+            document.getElementById('chkBg').checked = config.bgEnabled;
+            updateBackgroundMedia();
+            showToast(config.bgEnabled ? "Wallpaper Enabled" : "Wallpaper Disabled");
+        }
+
+        function setBackgroundEnabled(val) {
+            config.bgEnabled = val;
+            updateBackgroundMedia();
+            showToast(config.bgEnabled ? "Wallpaper Enabled" : "Wallpaper Disabled");
+        }
+
+        function applyBgPreset(presetKey) {
+            config.bgSource = presetKey;
+            config.bgEnabled = true;
+            document.getElementById('chkBg').checked = true;
+            document.getElementById('txtCustomBg').value = presetKey;
+            updateBackgroundMedia();
+            startVideoPlayback();
+            const name = BG_PRESETS[presetKey] ? BG_PRESETS[presetKey].name : presetKey;
+            showToast("Playing: " + name);
+        }
+
+        function setCustomBg(url) {
+            if (!url) return;
+            config.bgSource = url;
+            config.bgEnabled = true;
+            document.getElementById('chkBg').checked = true;
+            updateBackgroundMedia();
+            startVideoPlayback();
+            showToast("Custom Media Applied!");
+        }
+
+        function setBgDimming(val) {
+            config.bgDimming = parseInt(val);
+            document.getElementById('bgDimVal').textContent = config.bgDimming + "%";
+            const overlay = document.getElementById('bgDimOverlay');
+            if (overlay) overlay.style.background = `rgba(0, 0, 0, ${config.bgDimming / 100})`;
+        }
+
         // ================= CONTROLS & INTERACTIONS =================
         function cycleAnimation() {
             const idx = ANIM_KEYS.indexOf(config.anim);
             config.anim = ANIM_KEYS[(idx + 1) % ANIM_KEYS.length];
-            document.getElementById('animLabel').textContent = config.anim.charAt(0).toUpperCase() + config.anim.slice(1);
+            document.getElementById('animLabel').textContent = config.anim.charAt(0).toUpperCase() + config.anim.slice(1).replace('_', ' ');
             document.getElementById('selAnim').value = config.anim;
             showToast("Animation: " + config.anim.toUpperCase());
         }
@@ -729,12 +1499,28 @@
             document.getElementById('selTheme').value = config.theme;
             initStarfield();
             initParticles();
+            initRain();
+            initFireflies();
             showToast("Theme: " + THEMES[config.theme].name);
+        }
+
+        function cycleCountry() {
+            const idx = COUNTRIES.indexOf(config.country);
+            config.country = COUNTRIES[(idx + 1) % COUNTRIES.length];
+            document.getElementById('countryLabel').textContent = COUNTRY_LABELS[config.country];
+            document.getElementById('selCountry').value = config.country;
+            showToast("Holidays: " + COUNTRY_LABELS[config.country]);
+        }
+
+        function setCountry(val) {
+            config.country = val;
+            document.getElementById('countryLabel').textContent = COUNTRY_LABELS[config.country];
+            showToast("Holidays: " + COUNTRY_LABELS[config.country]);
         }
 
         function setAnimation(name) {
             config.anim = name;
-            document.getElementById('animLabel').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+            document.getElementById('animLabel').textContent = name.charAt(0).toUpperCase() + name.slice(1).replace('_', ' ');
             showToast("Animation: " + name.toUpperCase());
         }
 
@@ -743,6 +1529,8 @@
             document.getElementById('themeLabel').textContent = THEMES[key].name.split(' ')[0];
             initStarfield();
             initParticles();
+            initRain();
+            initFireflies();
             showToast("Theme: " + THEMES[key].name);
         }
 
@@ -783,16 +1571,27 @@
         }
 
         // Tap gestures: click top half = cycle animation, bottom half = cycle theme
+        // Also auto-starts video playback if waiting on user interaction
         canvas.addEventListener('click', (e) => {
+            startVideoPlayback();
             if (e.clientY < height * 0.5) cycleAnimation();
             else cycleTheme();
         });
 
+        // Global click listener to auto-start video if paused
+        window.addEventListener('click', (e) => {
+            if (e.target.closest('.controls-drawer') || e.target.closest('.hud-bar')) return;
+            startVideoPlayback();
+        });
+
         // Keyboard hotkeys
         window.addEventListener('keydown', (e) => {
+            startVideoPlayback();
             const key = e.key.toLowerCase();
             if (key === 'm') cycleAnimation();
             else if (key === 'c') cycleTheme();
+            else if (key === 'l') cycleCountry();
+            else if (key === 'g') toggleBackground();
             else if (key === 't') toggleFormat24h();
             else if (key === 's') {
                 config.showSeconds = !config.showSeconds;
@@ -804,8 +1603,26 @@
             else if (key === 'escape') document.getElementById('drawer').classList.remove('open');
         });
 
+        function syncControlsWithConfig() {
+            document.getElementById('selAnim').value = config.anim;
+            document.getElementById('animLabel').textContent = config.anim.charAt(0).toUpperCase() + config.anim.slice(1).replace('_', ' ');
+            document.getElementById('selTheme').value = config.theme;
+            document.getElementById('themeLabel').textContent = THEMES[config.theme].name.split(' ')[0];
+            document.getElementById('selCountry').value = config.country;
+            document.getElementById('countryLabel').textContent = COUNTRY_LABELS[config.country];
+            document.getElementById('chkBg').checked = config.bgEnabled;
+            if (BG_PRESETS[config.bgSource]) {
+                document.getElementById('selBgPreset').value = config.bgSource;
+            }
+            document.getElementById('bgDimVal').textContent = config.bgDimming + "%";
+            document.getElementById('chkSec').checked = config.showSeconds;
+            document.getElementById('formatLabel').textContent = config.format24h ? "24-Hour" : "12-Hour";
+        }
+
         // Initialize
         resize();
+        syncControlsWithConfig();
+        updateBackgroundMedia();
         requestAnimationFrame(loop);
     </script>
 </body>
