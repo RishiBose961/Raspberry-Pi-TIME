@@ -334,5 +334,3 @@ piclock/
 ## 📄 License
 
 MIT License. Free to use, modify, and distribute for personal and commercial projects.
-#   R a s p b e r r y - P i - T I M E  
- 

@@ -1,0 +1,4 @@
+# Requirements for PiClock
+# On Raspberry Pi OS, we recommend: sudo apt install -y python3-pygame
+# Alternatively, via pip:
+pygame>=2.1.0

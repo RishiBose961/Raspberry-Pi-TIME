@@ -1,0 +1,31 @@
+{
+    "display": {
+        "fullscreen": false,
+        "width": 1024,
+        "height": 600,
+        "fps": 60,
+        "brightness": 100,
+        "show_cursor": false
+    },
+    "clock": {
+        "format_24h": false,
+        "show_seconds": true,
+        "blink_colon": true,
+        "date_format": "%A, %B %d, %Y",
+        "custom_message": "Raspberry Pi 3",
+        "show_message": true
+    },
+    "visual": {
+        "theme": "sakura",
+        "animation": "starfield",
+        "animation_speed": 1.0,
+        "particle_count": 80,
+        "glow_effect": true,
+        "font_scale": 1.0
+    },
+    "web_remote": {
+        "enabled": true,
+        "port": 8080,
+        "bind_address": "0.0.0.0"
+    }
+}
