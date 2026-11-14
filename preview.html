@@ -267,6 +267,30 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
+        /* Phone Remote Modal */
+        .phone-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .phone-modal-card {
+            background: #0d1424;
+            border: 1px solid rgba(0, 240, 255, 0.45);
+            border-radius: 18px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 16px 45px rgba(0,0,0,0.7);
+        }
     </style>
 </head>
 <body>
@@ -281,6 +305,30 @@
     <!-- Interactive Video Playback Prompt (Shown if browser pauses autoplay) -->
     <div id="videoPrompt" class="video-play-prompt" onclick="startVideoPlayback()">▶ Click Anywhere to Play Background Video</div>
 
+    <!-- Phone Remote Connection Modal -->
+    <div id="phoneModal" class="phone-modal" style="display: none;" onclick="if(event.target===this) togglePhoneModal()">
+        <div class="phone-modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-weight: 700; color: #00f0ff; font-size: 16px;">📱 Connect Your Smartphone</span>
+                <button class="close-btn" onclick="togglePhoneModal()">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 12px;">
+                Open this address on your phone's browser (Safari or Chrome) while on the same Wi-Fi:
+            </p>
+            <div style="background: rgba(0,240,255,0.12); border: 1px solid rgba(0,240,255,0.4); border-radius: 8px; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; text-align: center; color: #00f0ff; margin-bottom: 12px;" id="modalPhoneUrl">
+                http://192.168.29.67:8080
+            </div>
+            <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+                <img id="modalQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=http%3A%2F%2F192.168.29.67%3A8080" style="width: 140px; height: 140px; border-radius: 8px; background: white; padding: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);" alt="Scan QR Code with Phone">
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; line-height: 1.5; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                💡 <b>Troubleshooting:</b><br>
+                1. Make sure <code>run_remote.bat</code> or <code>run.bat</code> is running on your PC.<br>
+                2. If connection fails, double-click <code>allow_firewall.bat</code> once as Administrator to open Windows Defender Firewall port 8080.
+            </div>
+        </div>
+    </div>
+
     <canvas id="canvas"></canvas>
 
     <!-- Top Quick Control Bar -->
@@ -290,6 +338,7 @@
         <button class="pill-btn" onclick="cycleCountry()">🌍 <span id="countryLabel">India (IN)</span></button>
         <button class="pill-btn" onclick="toggleBackground()">🖼️ <span id="bgHudLabel">Wallpaper: OFF</span></button>
         <button class="pill-btn" onclick="toggleFormat24h()"><span id="formatLabel">12-Hour</span></button>
+        <button class="pill-btn" onclick="togglePhoneModal()">📱 Phone</button>
         <button class="pill-btn" onclick="toggleDrawer()">⚙️ Settings</button>
         <button class="pill-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
@@ -1560,6 +1609,20 @@
 
         function toggleDrawer() {
             document.getElementById('drawer').classList.toggle('open');
+        }
+
+        function togglePhoneModal() {
+            const modal = document.getElementById('phoneModal');
+            if (!modal) return;
+            const isShown = modal.style.display !== 'none';
+            modal.style.display = isShown ? 'none' : 'flex';
+
+            // If served via HTTP, dynamic IP detection
+            if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                const hostUrl = `http://${window.location.hostname}:${window.location.port || '8080'}`;
+                document.getElementById('modalPhoneUrl').textContent = hostUrl;
+                document.getElementById('modalQrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(hostUrl)}`;
+            }
         }
 
         function toggleFullscreen() {

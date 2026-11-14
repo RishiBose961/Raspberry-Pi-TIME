@@ -6,6 +6,7 @@ Combines animations, clock rendering, keyboard/touch inputs, and Web Remote.
 import os
 import sys
 import time
+import queue
 import datetime
 import signal
 import pygame
@@ -64,12 +65,17 @@ class PiClockApp:
             custom_holidays=hol_cfg.get("custom_holidays", [])
         )
 
-        # Background media manager (online images, local wallpapers, presets)
+        # Background media manager (online images, local wallpapers, presets, video loops, slideshow)
         self.bg_manager = BackgroundManager(self.width, self.height)
         bg_cfg = self.config.get("background", {})
+        slide_cfg = bg_cfg.get("slideshow", {})
+        self.bg_manager.set_slideshow(
+            enabled=slide_cfg.get("enabled", False),
+            interval=float(slide_cfg.get("interval", 10.0))
+        )
         self.bg_manager.set_background(
-            enabled=bg_cfg.get("enabled", False),
-            source=bg_cfg.get("source", "cyber_city"),
+            enabled=bg_cfg.get("enabled", True),
+            source=bg_cfg.get("source", "oceans"),
             dimming=bg_cfg.get("dimming", 55)
         )
 
@@ -78,6 +84,9 @@ class PiClockApp:
         self.help_fade_timer = 4.0  # Show help banner for 4 seconds on startup
         self.running = True
 
+        # Thread-safe command queue for Web Remote events
+        self.cmd_queue = queue.Queue()
+
         # Web Remote
         web_cfg = self.config.get("web_remote", {})
         if web_cfg.get("enabled", True):
@@ -85,8 +94,8 @@ class PiClockApp:
             bind = web_cfg.get("bind_address", "0.0.0.0")
             start_web_remote(
                 self.config_manager,
-                on_change=self.on_external_config_change,
-                on_action=self.on_remote_action,
+                on_change=lambda *args, **kwargs: self.cmd_queue.put(("config_change", None)),
+                on_action=lambda action, *args, **kwargs: self.cmd_queue.put(("action", action)),
                 port=port,
                 host=bind
             )
@@ -126,9 +135,35 @@ class PiClockApp:
         print("\n[PiClock] Received exit signal. Shutting down cleanly...")
         self.running = False
 
-    def on_external_config_change(self):
-        """Invoked when Web Remote updates configuration."""
-        self.config = self.config_manager.data
+    def on_external_config_change(self, *args, **kwargs):
+        """Thread-safe enqueue when Web Remote updates configuration."""
+        self.cmd_queue.put(("config_change", None))
+
+    def on_remote_action(self, action: str, *args, **kwargs):
+        """Thread-safe enqueue when Web Remote triggers an action button."""
+        self.cmd_queue.put(("action", action))
+
+    def process_remote_commands(self):
+        """Processes pending remote commands safely on the main Pygame thread."""
+        while not self.cmd_queue.empty():
+            try:
+                cmd_type, data = self.cmd_queue.get_nowait()
+            except queue.Empty:
+                break
+            except Exception:
+                break
+
+            try:
+                if cmd_type == "config_change":
+                    self._apply_external_config_change()
+                elif cmd_type == "action":
+                    self._handle_remote_action(data)
+            except Exception as e:
+                print(f"[PiClock] Error processing remote command '{cmd_type}': {e}")
+
+    def _apply_external_config_change(self):
+        """Safely applies updated configuration on the main thread."""
+        self.config = self.config_manager.data.copy()
 
         # Update theme if changed
         new_theme = self.config.get("visual", {}).get("theme", "cyberpunk")
@@ -140,25 +175,36 @@ class PiClockApp:
         if new_anim != self.current_anim_name:
             self.set_animation(new_anim, persist=False)
 
-        # Update speed
+        # Update animation speed
         speed = float(self.config.get("visual", {}).get("animation_speed", 1.0))
         self.animation.set_speed(speed)
+
+        # Update font scale if changed
+        font_scale = float(self.config.get("visual", {}).get("font_scale", 1.0))
+        if abs(self.clock_renderer.font_scale - font_scale) > 0.01:
+            self.clock_renderer.set_font_scale(font_scale)
 
         # Update holiday configuration
         hol_cfg = self.config.get("holiday", {})
         self.holiday_manager.set_country(hol_cfg.get("country", "IN"))
         self.holiday_manager.set_custom_holidays(hol_cfg.get("custom_holidays", []))
 
-        # Update background configuration
+        # Update background & slideshow configuration
         bg_cfg = self.config.get("background", {})
+        slide_cfg = bg_cfg.get("slideshow", {})
+        self.bg_manager.set_slideshow(
+            enabled=slide_cfg.get("enabled", False),
+            interval=float(slide_cfg.get("interval", 10.0))
+        )
         self.bg_manager.set_background(
-            enabled=bg_cfg.get("enabled", False),
-            source=bg_cfg.get("source", "cyber_city"),
+            enabled=bg_cfg.get("enabled", True),
+            source=bg_cfg.get("source", "oceans"),
             dimming=bg_cfg.get("dimming", 55)
         )
+        self.help_fade_timer = 2.0
 
-    def on_remote_action(self, action: str):
-        """Invoked when Web Remote triggers an action button."""
+    def _handle_remote_action(self, action: str):
+        """Safely executes action buttons on the main thread."""
         if action == "next_theme":
             self.cycle_theme()
         elif action == "next_animation":
@@ -169,12 +215,24 @@ class PiClockApp:
             curr_bg = self.config.get("background", {}).get("enabled", False)
             self.config_manager.set(not curr_bg, "background", "enabled")
             self.bg_manager.enabled = not curr_bg
+            self.help_fade_timer = 2.0
+        elif action == "toggle_slideshow":
+            slide_cfg = self.config.setdefault("background", {}).setdefault("slideshow", {})
+            val = not slide_cfg.get("enabled", False)
+            slide_cfg["enabled"] = val
+            self.config_manager.set(val, "background", "slideshow", "enabled")
+            self.bg_manager.set_slideshow(val, float(slide_cfg.get("interval", 10.0)))
+            self.help_fade_timer = 2.0
         elif action == "toggle_24h":
             val = not self.config.get("clock", {}).get("format_24h", False)
             self.config_manager.set(val, "clock", "format_24h")
+            self.config.setdefault("clock", {})["format_24h"] = val
+            self.help_fade_timer = 2.0
         elif action == "toggle_seconds":
             val = not self.config.get("clock", {}).get("show_seconds", True)
             self.config_manager.set(val, "clock", "show_seconds")
+            self.config.setdefault("clock", {})["show_seconds"] = val
+            self.help_fade_timer = 2.0
         elif action == "toggle_fullscreen":
             self.toggle_fullscreen()
         elif action == "quit":
@@ -262,6 +320,14 @@ class PiClockApp:
                     self.config_manager.set(not curr_bg, "background", "enabled")
                     self.bg_manager.enabled = not curr_bg
                     self.help_fade_timer = 2.0
+                elif event.key == pygame.K_o:
+                    # Toggle Photo Slideshow mode
+                    slide_cfg = self.config.setdefault("background", {}).setdefault("slideshow", {})
+                    val = not slide_cfg.get("enabled", False)
+                    slide_cfg["enabled"] = val
+                    self.config_manager.set(val, "background", "slideshow", "enabled")
+                    self.bg_manager.set_slideshow(val, float(slide_cfg.get("interval", 10.0)))
+                    self.help_fade_timer = 2.0
                 elif event.key == pygame.K_t:
                     curr_24h = self.config.get("clock", {}).get("format_24h", False)
                     self.config_manager.set(not curr_24h, "clock", "format_24h")
@@ -300,6 +366,9 @@ class PiClockApp:
         while self.running:
             dt = clock.tick(self.target_fps) / 1000.0  # Delta time in seconds
 
+            # Process any pending commands from Web Remote / Mobile phone (thread-safe)
+            self.process_remote_commands()
+
             # Update help timer
             if self.help_fade_timer > 0:
                 self.help_fade_timer -= dt
@@ -311,7 +380,8 @@ class PiClockApp:
             bg_color = self.current_theme.get("background", (10, 8, 20))
             self.screen.fill(bg_color)
 
-            # Draw background wallpaper image if enabled
+            # Advance video playback frames / slideshow timer and draw background
+            self.bg_manager.update(dt)
             self.bg_manager.draw(self.screen)
 
             # Update and draw animation (floating over background!)
@@ -338,6 +408,7 @@ class PiClockApp:
             # Flip buffer
             pygame.display.flip()
 
+        self.bg_manager.cleanup()
         pygame.quit()
         sys.exit(0)
 

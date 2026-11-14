@@ -8,7 +8,7 @@
         "show_cursor": false
     },
     "clock": {
-        "format_24h": true,
+        "format_24h": false,
         "show_seconds": true,
         "blink_colon": true,
         "date_format": "%A, %B %d, %Y",
@@ -17,7 +17,7 @@
     },
     "visual": {
         "theme": "cyberpunk",
-        "animation": "matrix",
+        "animation": "starfield",
         "animation_speed": 1,
         "particle_count": 80,
         "glow_effect": true,
@@ -30,13 +30,17 @@
     },
     "holiday": {
         "enabled": true,
-        "country": "US",
+        "country": "IN",
         "show_upcoming": true,
         "custom_holidays": []
     },
     "background": {
         "enabled": true,
-        "source": "cyber_city",
-        "dimming": 55
+        "source": "backgrounds/1000107153.mp4",
+        "dimming": 55,
+        "slideshow": {
+            "enabled": false,
+            "interval": 10
+        }
     }
 }

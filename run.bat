@@ -16,6 +16,14 @@ if not exist "%PYTHON_EXE%" (
     )
 )
 
+echo ======================================================================
+echo   PiClock - Lightweight Smart Display for Raspberry Pi ^& Windows 11
+echo ======================================================================
+echo   📱 Mobile Remote Control is enabled on Port 8080.
+echo   💡 Note: If your phone cannot connect, run 'allow_firewall.bat' once
+echo      as Administrator to allow Port 8080 through Windows Firewall.
+echo ======================================================================
+echo.
 echo Starting PiClock on Windows 11...
 "%PYTHON_EXE%" main.py %*
 if %ERRORLEVEL% NEQ 0 (

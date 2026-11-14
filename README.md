@@ -193,25 +193,32 @@ sudo systemctl status piclock
 
 ## 🎛️ How to Customize PiClock
 
-### 1. Web Remote Control (Smartphone / PC)
-PiClock starts a lightweight HTTP server on port `8080`.
-1. Ensure your phone or laptop is on the same Wi-Fi network as your Raspberry Pi.
-2. Find your Raspberry Pi's IP address:
-   ```bash
-   hostname -I
-   ```
-3. Open your browser and navigate to:
-   ```
-   http://192.168.1.100:8080
-   ```
-   *(replace `192.168.1.100` with your Pi's actual IP).*
-4. The web dashboard allows you to:
-   - Tap color swatches to switch color themes instantly.
-   - Click animation pills to switch between Starfield, Matrix, Particles, Waves, and Minimalist.
-   - Toggle 12h/24h time, seconds display, blinking colon, and text glow.
-   - Adjust the night brightness dimmer.
-   - Edit the custom subtitle/greeting message.
-   - View your Raspberry Pi's live CPU temperature.
+### 1. Web Remote Control (Smartphone / Tablet / PC)
+PiClock includes a zero-dependency, mobile-responsive web dashboard running on port `8080`.
+
+#### Connecting From Your Smartphone:
+1. Ensure your smartphone is connected to the **same Wi-Fi network** as your Raspberry Pi or PC.
+2. Launch the server:
+   - **On Windows 11**: Double-click [`run_remote.bat`](file:///d:/Rasberi/run_remote.bat) or [`run.bat`](file:///d:/Rasberi/run.bat).
+   - **On Raspberry Pi**: Start PiClock via `./run.sh` or systemd service.
+3. Your terminal and remote header will display the exact phone link (e.g. `http://192.168.29.67:8080`).
+4. **Instant QR Code Scan**: Open `http://localhost:8080` on your PC, point your phone's camera at the on-screen QR code, and tap the link to connect!
+5. **Windows Firewall Troubleshooting**: If your phone cannot connect on Windows, double-click [`allow_firewall.bat`](file:///d:/Rasberi/allow_firewall.bat) once (click 'Yes' on the administrator prompt) to allow inbound TCP port 8080.
+
+#### Phone Media Gallery & Slideshow Controls:
+- **Upload Any Photo or Video**: Tap **📷 Choose Photo or Video** to upload directly from your phone's camera roll or files (`.jpg`, `.png`, `.mp4`, `.mov`, `.webm`).
+- **Live Video Playback in `run.bat`**: Uploaded MP4 and video files now decode and play smoothly in high-resolution, hardware-accelerated loops on your Pygame desktop and Raspberry Pi screen!
+- **Manage Media Directly from Phone**: View your stored gallery on the phone dashboard. Tap **✓ Apply** on any picture/video to immediately switch to it, or tap **🗑️ Delete** to remove unwanted items from storage.
+- **Automated Slideshow Mode**: Turn on **📸 Photo Slideshow Mode** and choose an interval (5s, 10s, 15s, 30s, 60s) to automatically cycle through all your uploaded gallery pictures and videos!
+
+#### What You Can Control From the Dashboard:
+- **Instant Photo/Video Upload & Gallery Management**: Add or remove photos and videos directly from your mobile browser.
+- **Automated Slideshow**: Toggle automatic wallpaper slideshow cycling with configurable intervals.
+- **Palette & Animation Pickers**: Tap any of the 8 curated themes or 9 procedural animations.
+- **Time & Clock Options**: Toggle 12h/24h format, show/hide seconds, blinking colon, and text glow.
+- **Holidays & Countdown**: Switch country holidays and upcoming event alerts.
+- **Night Brightness & Dimmer**: Adjust the screen brightness down to 10% for bedside nightstand use.
+- **Live System Telemetry**: View live CPU temperature, hostname, and holiday status.
 
 ---
 
@@ -224,6 +231,7 @@ When PiClock is running on your screen, you can use these keys:
 | `[C]` | Cycle Color Themes (*Cyberpunk, Matrix, Synthwave, Midnight, Amber, etc.*) |
 | `[L]` | Cycle Country Holidays (*India → United States → UK → Canada → Australia → Global → All*) |
 | `[G]` | Toggle Background Wallpaper on / off |
+| `[O]` | Toggle Photo Slideshow mode on / off |
 | `[T]` | Toggle 12-Hour (AM/PM) / 24-Hour military time |
 | `[S]` | Toggle seconds display on / off |
 | `[F]` | Toggle Fullscreen / Windowed mode |

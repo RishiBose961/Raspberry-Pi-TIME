@@ -1,4 +1,5 @@
 # Requirements for PiClock
-# On Raspberry Pi OS, we recommend: sudo apt install -y python3-pygame
-# Alternatively, via pip:
-pygame>=2.1.0
+# On Raspberry Pi OS: sudo apt install -y python3-pygame python3-opencv
+# Or via pip on PC/Raspberry Pi:
+pygame-ce>=2.1.0
+opencv-python>=4.5.0
