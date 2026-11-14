@@ -26,7 +26,7 @@ USER_HOME="$(getent passwd "$CURRENT_USER" | cut -d: -f6)"
 echo -e "${YELLOW}[1/4] Checking and installing system packages...${NC}"
 if command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update -y
-    sudo apt-get install -y python3 python3-pygame python3-opencv python3-pip
+    sudo apt-get install -y python3 python3-pygame python3-opencv python3-pip x11-xserver-utils
 else
     echo -e "${RED}apt-get not found. Please ensure you are running Raspberry Pi OS or Debian.${NC}"
     exit 1

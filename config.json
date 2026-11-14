@@ -3,7 +3,7 @@
         "fullscreen": false,
         "width": 1024,
         "height": 600,
-        "fps": 60,
+        "fps": 30,
         "brightness": 100,
         "show_cursor": false
     },
@@ -13,15 +13,15 @@
         "blink_colon": true,
         "date_format": "%A, %B %d, %Y",
         "custom_message": "Raspberry Pi 3 \u2022 Smart Display",
-        "show_message": false
+        "show_message": true
     },
     "visual": {
-        "theme": "cyberpunk",
+        "theme": "amber",
         "animation": "starfield",
-        "animation_speed": 1,
+        "animation_speed": 1.0,
         "particle_count": 80,
         "glow_effect": true,
-        "font_scale": 1
+        "font_scale": 1.0
     },
     "web_remote": {
         "enabled": true,
@@ -36,11 +36,11 @@
     },
     "background": {
         "enabled": true,
-        "source": "backgrounds/1000107153.mp4",
+        "source": "oceans",
         "dimming": 55,
         "slideshow": {
             "enabled": false,
-            "interval": 10
+            "interval": 10.0
         }
     }
 }

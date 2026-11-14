@@ -24,7 +24,7 @@ class AuroraAnimation(BaseAnimation):
         self.aurora_surf.fill((0, 0, 0, 0))
 
         # 3 Layers of aurora curtains
-        step_x = 18
+        step_x = 24
         colors = self.colors if len(self.colors) >= 3 else [
             (0, 255, 170), (0, 200, 255), (160, 32, 240)
         ]

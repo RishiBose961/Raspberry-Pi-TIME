@@ -9,7 +9,7 @@ import pygame
 from .base import BaseAnimation
 
 class FirefliesAnimation(BaseAnimation):
-    def __init__(self, width: int, height: int, theme: dict, speed: float = 1.0, count: int = 45):
+    def __init__(self, width: int, height: int, theme: dict, speed: float = 1.0, count: int = 30):
         super().__init__(width, height, theme, speed)
         self.count = count
         self.fireflies = []
@@ -19,41 +19,45 @@ class FirefliesAnimation(BaseAnimation):
     def _init_fireflies(self):
         self.fireflies = []
         self._glow_cache.clear()
+        colors = self.colors if self.colors else [(0, 240, 255)]
         for _ in range(self.count):
             self.fireflies.append({
                 "x": random.uniform(20, self.width - 20),
                 "y": random.uniform(20, self.height - 20),
                 "vx": random.uniform(-18, 18),
                 "vy": random.uniform(-18, 18),
-                "radius": random.uniform(3.5, 7.0),
-                "color": random.choice(self.colors),
+                "radius": random.choice([3, 4, 5]),
+                "color": random.choice(colors),
                 "pulse_speed": random.uniform(1.2, 3.2),
                 "phase": random.uniform(0, math.pi * 2),
                 "wander_timer": random.uniform(1.0, 3.0)
             })
 
     def _get_glow_surf(self, radius: int, color: tuple, pulse: float) -> pygame.Surface:
-        radius = max(3, int(radius))
-        alpha_step = int(pulse * 10)  # Quantize pulse to reduce cache size
+        radius = max(3, min(5, int(radius)))
+        alpha_step = max(0, min(6, int(pulse * 6)))  # 7 discrete pulse states
         key = (radius, color, alpha_step)
         if key not in self._glow_cache:
+            p_val = alpha_step / 6.0
             size = radius * 6
             surf = pygame.Surface((size, size), pygame.SRCALPHA)
             cx, cy = size // 2, size // 2
 
             # Outer aura
-            alpha1 = max(0, min(255, int(50 * pulse)))
+            alpha1 = max(0, min(255, int(50 * p_val)))
             pygame.draw.circle(surf, (*color[:3], alpha1), (cx, cy), radius * 3)
 
             # Mid halo
-            alpha2 = max(0, min(255, int(130 * pulse)))
+            alpha2 = max(0, min(255, int(130 * p_val)))
             pygame.draw.circle(surf, (*color[:3], alpha2), (cx, cy), int(radius * 1.6))
 
             # Inner bright spark
-            alpha3 = max(0, min(255, int(240 * pulse)))
+            alpha3 = max(0, min(255, int(240 * p_val)))
             core_c = (min(255, color[0] + 80), min(255, color[1] + 80), min(255, color[2] + 80))
             pygame.draw.circle(surf, (*core_c, alpha3), (cx, cy), max(1, radius - 1))
 
+            if len(self._glow_cache) > 80:
+                self._glow_cache.clear()
             self._glow_cache[key] = surf
         return self._glow_cache[key]
 

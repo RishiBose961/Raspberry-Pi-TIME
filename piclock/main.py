@@ -21,10 +21,26 @@ from .background import BackgroundManager, BACKGROUND_PRESETS
 
 COUNTRY_LIST = ["IN", "US", "UK", "CA", "AU", "GLOBAL", "ALL"]
 
+def is_raspberry_pi() -> bool:
+    try:
+        if os.path.exists("/sys/firmware/devicetree/base/model"):
+            with open("/sys/firmware/devicetree/base/model", "r") as f:
+                if "raspberry pi" in f.read().lower():
+                    return True
+        if os.path.exists("/proc/cpuinfo"):
+            with open("/proc/cpuinfo", "r") as f:
+                c = f.read().lower()
+                if "bcm2835" in c or "bcm2837" in c or "bcm2711" in c or "raspberry" in c:
+                    return True
+    except Exception:
+        pass
+    return False
+
 class PiClockApp:
     def __init__(self, config_file: str = "config.json"):
         self.config_manager = ConfigManager(config_file)
         self.config = self.config_manager.data
+        self.is_rpi = is_raspberry_pi()
 
         # Configure SDL environment for Raspberry Pi before pygame.init()
         self._setup_display_environment()
@@ -34,10 +50,11 @@ class PiClockApp:
 
         # Display parameters
         disp_cfg = self.config.get("display", {})
-        self.is_fullscreen = disp_cfg.get("fullscreen", True)
+        self.is_fullscreen = disp_cfg.get("fullscreen", True if self.is_rpi else False)
         self.width = disp_cfg.get("width", 1024)
         self.height = disp_cfg.get("height", 600)
-        self.target_fps = disp_cfg.get("fps", 60)
+        default_fps = 30 if self.is_rpi else 60
+        self.target_fps = disp_cfg.get("fps", default_fps)
         self.show_cursor = disp_cfg.get("show_cursor", False)
 
         # Create window or fullscreen display
@@ -64,6 +81,10 @@ class PiClockApp:
             country=hol_cfg.get("country", "IN"),
             custom_holidays=hol_cfg.get("custom_holidays", [])
         )
+        self._cached_holiday_text = ""
+        self._cached_holiday_is_today = False
+        self._cached_holiday_date = None
+        self._gc_timer = 0.0
 
         # Background media manager (online images, local wallpapers, presets, video loops, slideshow)
         self.bg_manager = BackgroundManager(self.width, self.height)
@@ -105,17 +126,23 @@ class PiClockApp:
         signal.signal(signal.SIGTERM, self._signal_handler)
 
     def _setup_display_environment(self):
-        """Configure Linux / Raspberry Pi environment drivers."""
-        # Hide mouse cursor on framebuffer/touchscreens if requested
+        """Configure Linux / Raspberry Pi environment drivers and disable screen blanking."""
+        os.environ["SDL_VIDEO_ALLOW_SCREENSAVER"] = "0"
         if not self.config.get("display", {}).get("show_cursor", False):
-            os.environ["SDL_NOMOUSE"] = "0"
+            os.environ["SDL_NOMOUSE"] = "1"
+
+        if sys.platform.startswith("linux"):
+            try:
+                import subprocess
+                subprocess.run(["xset", "s", "off", "-dpms", "s", "noblank"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            except Exception:
+                pass
 
     def _setup_screen(self):
-        """Create Pygame display surface."""
+        """Create Pygame display surface with safe fallback."""
         flags = pygame.DOUBLEBUF
         if self.is_fullscreen:
             flags |= pygame.FULLSCREEN
-            # If fullscreen on Pi, query native resolution
             try:
                 info = pygame.display.Info()
                 if info.current_w > 0 and info.current_h > 0:
@@ -123,10 +150,17 @@ class PiClockApp:
                     self.height = info.current_h
             except Exception:
                 pass
-            self.screen = pygame.display.set_mode((self.width, self.height), flags)
+            try:
+                self.screen = pygame.display.set_mode((self.width, self.height), flags)
+            except Exception as e:
+                print(f"[PiClock] Fullscreen failed ({e}), falling back to windowed...")
+                self.is_fullscreen = False
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF)
         else:
-            flags |= pygame.RESIZABLE
-            self.screen = pygame.display.set_mode((self.width, self.height), flags)
+            try:
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF | pygame.RESIZABLE)
+            except Exception:
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF)
 
         pygame.display.set_caption("PiClock - Raspberry Pi 3")
         pygame.mouse.set_visible(self.show_cursor)
@@ -188,6 +222,13 @@ class PiClockApp:
         hol_cfg = self.config.get("holiday", {})
         self.holiday_manager.set_country(hol_cfg.get("country", "IN"))
         self.holiday_manager.set_custom_holidays(hol_cfg.get("custom_holidays", []))
+        self._cached_holiday_date = None
+
+        # Update display FPS if changed
+        new_fps = int(self.config.get("display", {}).get("fps", 30 if self.is_rpi else 60))
+        if new_fps != self.target_fps and 10 <= new_fps <= 120:
+            self.target_fps = new_fps
+            print(f"[PiClock] Display target updated to: {self.target_fps} FPS")
 
         # Update background & slideshow configuration
         bg_cfg = self.config.get("background", {})
@@ -273,6 +314,7 @@ class PiClockApp:
             next_c = COUNTRY_LIST[0]
         self.config_manager.set(next_c, "holiday", "country")
         self.holiday_manager.set_country(next_c)
+        self._cached_holiday_date = None
         self.help_fade_timer = 2.5
         print(f"[PiClock] Holiday country set to: {next_c}")
 
@@ -359,54 +401,81 @@ class PiClockApp:
                     self.cycle_theme()
 
     def run(self):
-        """Main rendering loop."""
+        """Main rendering loop with crash guard and watchdog recovery."""
         clock = pygame.time.Clock()
-        print("[PiClock] Running! Press [H] for hotkey shortcuts, or visit the Web Remote.")
+        print(f"[PiClock] Running! Target: {self.target_fps} FPS. Press [H] for hotkeys, or visit Web Remote.")
 
+        consecutive_errors = 0
         while self.running:
-            dt = clock.tick(self.target_fps) / 1000.0  # Delta time in seconds
+            try:
+                dt = clock.tick(self.target_fps) / 1000.0  # Delta time in seconds
+                dt = min(0.1, max(0.001, dt))  # Clamp dt to avoid physics jumps
 
-            # Process any pending commands from Web Remote / Mobile phone (thread-safe)
-            self.process_remote_commands()
+                # Periodic garbage collection (every 60s) to keep memory footprint flat on Pi
+                self._gc_timer += dt
+                if self._gc_timer >= 60.0:
+                    self._gc_timer = 0.0
+                    import gc
+                    gc.collect()
 
-            # Update help timer
-            if self.help_fade_timer > 0:
-                self.help_fade_timer -= dt
+                # Process any pending commands from Web Remote / Mobile phone (thread-safe)
+                self.process_remote_commands()
 
-            # Handle user events
-            self.handle_events()
+                # Update help timer
+                if self.help_fade_timer > 0:
+                    self.help_fade_timer -= dt
 
-            # Clear screen with background color
-            bg_color = self.current_theme.get("background", (10, 8, 20))
-            self.screen.fill(bg_color)
+                # Handle user events
+                self.handle_events()
 
-            # Advance video playback frames / slideshow timer and draw background
-            self.bg_manager.update(dt)
-            self.bg_manager.draw(self.screen)
+                # Clear screen with background color
+                bg_color = self.current_theme.get("background", (10, 8, 20))
+                self.screen.fill(bg_color)
 
-            # Update and draw animation (floating over background!)
-            self.animation.update(dt)
-            self.animation.draw(self.screen)
+                # Advance video playback frames / slideshow timer and draw background
+                self.bg_manager.update(dt)
+                self.bg_manager.draw(self.screen)
 
-            # Holiday calculation
-            hol_cfg = self.config.get("holiday", {})
-            if hol_cfg.get("enabled", True):
-                holiday_text, is_today = self.holiday_manager.get_status_string(datetime.date.today())
-            else:
-                holiday_text, is_today = "", False
+                # Update and draw animation (floating over background!)
+                self.animation.update(dt)
+                self.animation.draw(self.screen)
 
-            # Render clock, date, holiday banner, custom messages
-            self.clock_renderer.render(
-                self.screen,
-                self.config,
-                holiday_text=holiday_text,
-                is_today_holiday=is_today,
-                show_help=self.show_help,
-                help_opacity=max(0.0, self.help_fade_timer)
-            )
+                # Holiday calculation (cached daily, zero per-frame CPU waste)
+                today = datetime.date.today()
+                if today != self._cached_holiday_date:
+                    hol_cfg = self.config.get("holiday", {})
+                    if hol_cfg.get("enabled", True):
+                        self._cached_holiday_text, self._cached_holiday_is_today = self.holiday_manager.get_status_string(today)
+                    else:
+                        self._cached_holiday_text, self._cached_holiday_is_today = "", False
+                    self._cached_holiday_date = today
 
-            # Flip buffer
-            pygame.display.flip()
+                # Render clock, date, holiday banner, custom messages
+                self.clock_renderer.render(
+                    self.screen,
+                    self.config,
+                    holiday_text=self._cached_holiday_text,
+                    is_today_holiday=self._cached_holiday_is_today,
+                    show_help=self.show_help,
+                    help_opacity=max(0.0, self.help_fade_timer)
+                )
+
+                # Flip buffer
+                pygame.display.flip()
+                consecutive_errors = 0
+
+            except Exception as e:
+                consecutive_errors += 1
+                print(f"[PiClock Watchdog] Recovered from error #{consecutive_errors}: {e}")
+                time.sleep(0.05)
+                if consecutive_errors > 20:
+                    print("[PiClock Watchdog] Resetting state to safe defaults...")
+                    try:
+                        self.set_animation("minimalist", persist=False)
+                        self.bg_manager.set_background(enabled=False)
+                        consecutive_errors = 0
+                    except Exception:
+                        pass
 
         self.bg_manager.cleanup()
         pygame.quit()
@@ -414,8 +483,17 @@ class PiClockApp:
 
 def main():
     config_file = sys.argv[1] if len(sys.argv) > 1 else "config.json"
-    app = PiClockApp(config_file=config_file)
-    app.run()
+    while True:
+        try:
+            app = PiClockApp(config_file=config_file)
+            app.run()
+            break  # Clean exit on user request (e.g. [Q] or remote Quit)
+        except KeyboardInterrupt:
+            print("[PiClock] Stopped cleanly by user.")
+            break
+        except Exception as e:
+            print(f"[PiClock Fatal Error] {e}. Auto-recovering in 2 seconds...")
+            time.sleep(2.0)
 
 if __name__ == "__main__":
     main()

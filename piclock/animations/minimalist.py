@@ -12,18 +12,14 @@ class MinimalistAnimation(BaseAnimation):
     def __init__(self, width: int, height: int, theme: dict, speed: float = 1.0):
         super().__init__(width, height, theme, speed)
         self.time = 0.0
-        self.pulse_surf = pygame.Surface((width, height), pygame.SRCALPHA)
 
     def resize(self, width: int, height: int):
         super().resize(width, height)
-        self.pulse_surf = pygame.Surface((width, height), pygame.SRCALPHA)
 
     def update(self, dt: float):
         self.time += dt * self.speed * 1.5
 
     def draw(self, surface: pygame.Surface):
-        self.pulse_surf.fill((0, 0, 0, 0))
-
         cx = self.width // 2
         cy = self.height // 2
 
@@ -31,18 +27,19 @@ class MinimalistAnimation(BaseAnimation):
         breath = (math.sin(self.time) + 1.0) / 2.0
 
         accent = self.theme.get("accent", (0, 240, 255))
-        alpha = int(40 + breath * 60)
+        # Subtle alpha shading via pre-multiplied RGB color
+        factor = 0.4 + breath * 0.4
+        c_ring = (int(accent[0] * factor), int(accent[1] * factor), int(accent[2] * factor))
+        c_ring2 = (int(accent[0] * factor * 0.5), int(accent[1] * factor * 0.5), int(accent[2] * factor * 0.5))
         radius = int(min(self.width, self.height) * 0.38 + breath * 15)
 
-        # Concentric breathing rings
-        pygame.draw.circle(self.pulse_surf, (*accent[:3], alpha), (cx, cy), radius, 2)
-        pygame.draw.circle(self.pulse_surf, (*accent[:3], int(alpha * 0.5)), (cx, cy), radius + 25, 1)
+        # Concentric breathing rings drawn directly (zero-copy, zero alpha surface)
+        pygame.draw.circle(surface, c_ring, (cx, cy), radius, 2)
+        pygame.draw.circle(surface, c_ring2, (cx, cy), radius + 25, 1)
 
         # Subtle geometric horizontal hairline
         line_y = int(self.height * 0.72)
         line_w = int(self.width * (0.4 + breath * 0.1))
         x1 = cx - line_w // 2
         x2 = cx + line_w // 2
-        pygame.draw.line(self.pulse_surf, (*accent[:3], int(alpha * 0.8)), (x1, line_y), (x2, line_y), 2)
-
-        surface.blit(self.pulse_surf, (0, 0))
+        pygame.draw.line(surface, c_ring, (x1, line_y), (x2, line_y), 2)

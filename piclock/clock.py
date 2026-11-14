@@ -21,12 +21,19 @@ class ClockRenderer:
         self.font_holiday = None
         self.font_msg = None
         self.font_help = None
+        self._glow_text_cache = {}
+        self._badge_cache = None
+        self._badge_cache_key = None
+        self._dim_surface = None
+        self._dim_alpha_cached = None
         self._init_fonts()
 
     def _init_fonts(self):
         """Scale fonts smoothly based on current screen dimensions."""
         if not pygame.font.get_init():
             pygame.font.init()
+        self._glow_text_cache.clear()
+        self._badge_cache = None
         base_h = self.height
         # Proportional font sizes based on screen height
         time_size = int(base_h * 0.25 * self.font_scale)
@@ -50,10 +57,13 @@ class ClockRenderer:
     def resize(self, width: int, height: int):
         self.width = width
         self.height = height
+        self._dim_surface = None
         self._init_fonts()
 
     def set_theme(self, theme: dict):
         self.theme = theme
+        self._glow_text_cache.clear()
+        self._badge_cache = None
 
     def set_font_scale(self, scale: float):
         self.font_scale = max(0.6, min(1.8, scale))
@@ -61,28 +71,62 @@ class ClockRenderer:
 
     def _render_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
                           color: tuple, pos: tuple, glow: bool = True, anchor: str = "center"):
-        """Render text with an ambient drop-shadow / glow."""
-        text_surf = font.render(text, True, color)
-        rect = text_surf.get_rect()
+        """
+        Ultra-high-performance text renderer with composite texture caching.
+        Instead of rasterizing text and blitting 7 times every frame on the CPU,
+        this renders once into a composite glowing surface and blits in 1 operation.
+        """
+        key = (text, id(font), color, glow)
+        cached = self._glow_text_cache.get(key)
+
+        if cached is None:
+            text_surf = font.render(text, True, color)
+            tw, th = text_surf.get_size()
+
+            if not glow:
+                pad = 0
+                comp_surf = text_surf
+            else:
+                pad = 4
+                comp_surf = pygame.Surface((tw + pad * 2, th + pad * 2), pygame.SRCALPHA)
+                glow_color = (max(0, color[0] // 4), max(0, color[1] // 4), max(0, color[2] // 4))
+                glow_surf = font.render(text, True, glow_color)
+                # 4-direction ambient drop shadow
+                for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+                    comp_surf.blit(glow_surf, (pad + dx, pad + dy))
+                comp_surf.blit(text_surf, (pad, pad))
+
+            # Prevent cache explosion
+            if len(self._glow_text_cache) > 150:
+                self._glow_text_cache.clear()
+
+            cached = (comp_surf, pad, tw, th)
+            self._glow_text_cache[key] = cached
+
+        comp_surf, pad, tw, th = cached
+
+        # Calculate position based on anchor
+        px, py = pos
         if anchor == "center":
-            rect.center = pos
-        elif anchor == "topleft":
-            rect.topleft = pos
+            rx = px - (tw // 2)
+            ry = py - (th // 2)
         elif anchor == "midleft":
-            rect.midleft = pos
+            rx = px
+            ry = py - (th // 2)
+        elif anchor == "topleft":
+            rx = px
+            ry = py
         elif anchor == "midright":
-            rect.midright = pos
+            rx = px - tw
+            ry = py - (th // 2)
         elif anchor == "bottomcenter":
-            rect.midbottom = pos
+            rx = px - (tw // 2)
+            ry = py - th
+        else:
+            rx, ry = px, py
 
-        if glow:
-            glow_color = (max(0, color[0] // 4), max(0, color[1] // 4), max(0, color[2] // 4))
-            glow_surf = font.render(text, True, glow_color)
-            for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-3, -3), (3, 3)]:
-                surface.blit(glow_surf, (rect.x + dx, rect.y + dy))
-
-        surface.blit(text_surf, rect)
-        return rect
+        surface.blit(comp_surf, (rx - pad, ry - pad))
+        return pygame.Rect(rx, ry, tw, th)
 
     def render(self, surface: pygame.Surface, config: dict, holiday_text: str = "", is_today_holiday: bool = False, show_help: bool = False, help_opacity: float = 0.0):
         """Render the complete clock, date, holiday banner, custom message, and overlays."""
@@ -144,8 +188,7 @@ class ClockRenderer:
 
         # Render Time digits with exact spacing
         time_text = f"{hours_str}{colon}{mins_str}"
-        time_surf = self.font_time.render(time_text, True, primary_color)
-        t_w, t_h = time_surf.get_size()
+        t_w, t_h = self.font_time.size(time_text)
 
         # If seconds or AM/PM shown, calculate full composite width
         extra_w = 0
@@ -185,14 +228,18 @@ class ClockRenderer:
         # 3. Holiday Banner
         if has_holiday:
             if is_today_holiday:
-                # Festive glowing badge
-                h_surf = self.font_holiday.render(holiday_text, True, (255, 230, 80))
-                hw, hh = h_surf.get_size()
-                badge_pad_x, badge_pad_y = 18, 6
-                badge_surf = pygame.Surface((hw + badge_pad_x * 2, hh + badge_pad_y * 2), pygame.SRCALPHA)
-                pygame.draw.rect(badge_surf, (255, 200, 0, 45), badge_surf.get_rect(), border_radius=12)
-                pygame.draw.rect(badge_surf, (255, 215, 0, 160), badge_surf.get_rect(), width=1, border_radius=12)
-                surface.blit(badge_surf, (center_x - (badge_surf.get_width() // 2), holiday_y - (badge_surf.get_height() // 2)))
+                # Festive glowing badge (cached, zero per-frame allocation)
+                if self._badge_cache_key != (holiday_text, self.width):
+                    h_surf = self.font_holiday.render(holiday_text, True, (255, 230, 80))
+                    hw, hh = h_surf.get_size()
+                    badge_pad_x, badge_pad_y = 18, 6
+                    badge_surf = pygame.Surface((hw + badge_pad_x * 2, hh + badge_pad_y * 2), pygame.SRCALPHA)
+                    pygame.draw.rect(badge_surf, (255, 200, 0, 45), badge_surf.get_rect(), border_radius=12)
+                    pygame.draw.rect(badge_surf, (255, 215, 0, 160), badge_surf.get_rect(), width=1, border_radius=12)
+                    self._badge_cache = badge_surf
+                    self._badge_cache_key = (holiday_text, self.width)
+                if self._badge_cache:
+                    surface.blit(self._badge_cache, (center_x - (self._badge_cache.get_width() // 2), holiday_y - (self._badge_cache.get_height() // 2)))
                 self._render_glow_text(surface, holiday_text, self.font_holiday, (255, 230, 80), (center_x, holiday_y), glow=glow_enabled, anchor="center")
             else:
                 # Upcoming holiday indicator
@@ -219,10 +266,12 @@ class ClockRenderer:
 
             surface.blit(overlay_surf, (0, self.height - overlay_h))
 
-        # 5. Software Brightness Dimmer (0-100%)
+        # 5. Software Brightness Dimmer (0-100%) - Cached surface
         if brightness < 100:
             dim_factor = max(0, min(100, brightness))
             dim_alpha = int(255 * (1.0 - (dim_factor / 100.0)))
-            dim_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-            dim_surf.fill((0, 0, 0, dim_alpha))
-            surface.blit(dim_surf, (0, 0))
+            if self._dim_surface is None or self._dim_alpha_cached != dim_alpha or self._dim_surface.get_size() != (self.width, self.height):
+                self._dim_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+                self._dim_surface.fill((0, 0, 0, dim_alpha))
+                self._dim_alpha_cached = dim_alpha
+            surface.blit(self._dim_surface, (0, 0))

@@ -13,7 +13,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "fullscreen": False,
         "width": 1024,
         "height": 600,
-        "fps": 60,
+        "fps": 30,
         "brightness": 100,  # 10 to 100%
         "show_cursor": False
     },

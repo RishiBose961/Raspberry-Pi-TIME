@@ -8,7 +8,7 @@ import pygame
 from .base import BaseAnimation
 
 class StarfieldAnimation(BaseAnimation):
-    def __init__(self, width: int, height: int, theme: dict, speed: float = 1.0, count: int = 90):
+    def __init__(self, width: int, height: int, theme: dict, speed: float = 1.0, count: int = 60):
         super().__init__(width, height, theme, speed)
         self.count = count
         self.max_depth = 1000.0

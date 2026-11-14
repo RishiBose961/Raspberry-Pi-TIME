@@ -580,6 +580,16 @@ HTML_PAGE = r"""<!DOCTYPE html>
                 </label>
             </div>
 
+            <div class="control-group" style="margin-top: 14px;">
+                <label for="selFps">Framerate & Performance Mode</label>
+                <select id="selFps" onchange="autoApplySetting()">
+                    <option value="30">30 FPS (Silky Smooth - Recommended for Raspberry Pi 3)</option>
+                    <option value="60">60 FPS (High Refresh - PC / Raspberry Pi 4/5)</option>
+                    <option value="20">20 FPS (Eco / Ultra Low Power)</option>
+                </select>
+                <div class="switch-desc" style="margin-top: 4px;">30 FPS prevents Raspberry Pi 3 thermal throttling and delivers stutter-free clock animations.</div>
+            </div>
+
             <div style="margin-top: 16px;">
                 <label>Display Brightness (Night Dimmer)</label>
                 <div class="range-wrap" style="margin-top: 6px;">
@@ -885,6 +895,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
             document.getElementById('dispBrightness').value = disp.brightness || 100;
             document.getElementById('dispBrightnessVal').textContent = (disp.brightness || 100) + '%';
+            if (document.getElementById('selFps')) {
+                document.getElementById('selFps').value = disp.fps ? String(disp.fps) : "30";
+            }
 
             document.getElementById('selCountry').value = (hol.country || 'IN').toUpperCase();
             document.getElementById('chkHoliday').checked = hol.enabled !== false;
@@ -994,7 +1007,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
                     glow_effect: document.getElementById('chkGlow').checked
                 },
                 display: {
-                    brightness: parseInt(document.getElementById('dispBrightness').value)
+                    brightness: parseInt(document.getElementById('dispBrightness').value),
+                    fps: parseInt(document.getElementById('selFps').value)
                 },
                 holiday: {
                     country: document.getElementById('selCountry').value,
